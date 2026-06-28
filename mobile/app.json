@@ -11,7 +11,9 @@
       "resizeMode": "cover",
       "backgroundColor": "#FFD700"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "kg.osh.hlopok"
@@ -28,7 +30,7 @@
         "WRITE_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE"
-      ],
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -47,8 +49,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "5e1406e3-5a4d-4de3-8f48-b4f8c53465b9"
       }
-    }
+    },
+    "owner": "ri.db"
   }
 }
