@@ -350,6 +350,7 @@ exports.sendOTP = async (req, res) => {
 
     // SMS yuborish (+996 prefixi bilan, 0 ni olib tashlab)
     const intlPhone = `+996${clean.slice(1)}`;
+    console.log(`[OTP] ${intlPhone} => ${code}`);
     await sendSMS(intlPhone, `Hlopok: код подтверждения ${code}. Действует 5 минут.`);
 
     res.json({ success: true, message: msg(req, 'Код отправлен', 'Код жөнөтүлдү') });
