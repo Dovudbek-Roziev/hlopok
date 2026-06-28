@@ -48,10 +48,10 @@ const corsOptions = {
   credentials: true,
 };
 
-// Socket.io — polling only (Vercel serverless bilan mos)
+// Socket.io — Render da websocket + polling, Vercel da faqat polling
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
-  transports: ['polling'],
+  transports: process.env.VERCEL ? ['polling'] : ['websocket', 'polling'],
 });
 app.set('io', io);
 initSocket(io);
