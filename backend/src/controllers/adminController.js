@@ -6,7 +6,7 @@ const Category = require('../models/Category');
 const Brand = require('../models/Brand');
 const Banner = require('../models/Banner');
 const Promotion = require('../models/Promotion');
-const Bonus = require('../models/Bonus');
+const { BonusTransaction, BonusSettings } = require('../models/Bonus');
 const Review = require('../models/Review');
 const FAQ = require('../models/FAQ');
 const OTP = require('../models/OTP');
@@ -143,7 +143,7 @@ exports.clearAllData = async (req, res) => {
       Brand.deleteMany({}),
       Banner.deleteMany({}),
       Promotion.deleteMany({}),
-      Bonus.deleteMany({}),
+      BonusTransaction.deleteMany({}),
       Review.deleteMany({}),
       FAQ.deleteMany({}),
       OTP.deleteMany({}),
