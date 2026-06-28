@@ -56,6 +56,9 @@ const io = new Server(server, {
 app.set('io', io);
 initSocket(io);
 
+// Render/proxy orqali ishlaydi
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors(corsOptions));
