@@ -29,6 +29,7 @@ exports.createBrand = async (req, res) => {
     const brand = await Brand.create({ name, description: description || '', logo, isActive: isActive !== false, order: order || 0 });
     res.status(201).json({ success: true, brand });
   } catch (error) {
+    console.error('createBrand error:', error.message);
     res.status(500).json({ success: false, message: msg(req, 'Ошибка создания бренда', 'Бренд кошуудо ката') });
   }
 };
