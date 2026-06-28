@@ -1,0 +1,50 @@
+{
+  "name": "hlopok-mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "build:android": "eas build --platform android",
+    "build:ios": "eas build --platform ios"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/bottom-tabs": "^7.3.0",
+    "@react-navigation/native": "^7.3.0",
+    "@react-navigation/stack": "^7.3.0",
+    "@tanstack/react-query": "^5.101.0",
+    "axios": "^1.7.9",
+    "buffer": "^6.0.3",
+    "expo": "~56.0.9",
+    "expo-camera": "~56.0.8",
+    "expo-constants": "~56.0.18",
+    "expo-font": "~56.0.6",
+    "expo-image-picker": "~56.0.17",
+    "expo-linking": "~56.0.14",
+    "expo-notifications": "~56.0.17",
+    "expo-secure-store": "~56.0.4",
+    "expo-splash-screen": "~56.0.10",
+    "expo-status-bar": "~56.0.4",
+    "i18next": "^24.2.0",
+    "lucide-react-native": "^1.17.0",
+    "moti": "^0.30.0",
+    "react": "19.2.3",
+    "react-i18next": "^15.5.0",
+    "react-native": "0.85.3",
+    "react-native-gesture-handler": "~2.31.1",
+    "react-native-reanimated": "4.3.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-svg": "15.15.4",
+    "react-native-worklets": "^0.8.3",
+    "socket.io-client": "^4.8.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "~19.2.0",
+    "typescript": "~6.0.3"
+  }
+}
