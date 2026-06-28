@@ -110,7 +110,7 @@ const LoginPage = () => {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                placeholder="admin@hlopok.com"
+                placeholder="example@mail.com"
                 style={{
                   width: '100%', padding: '12px 14px',
                   backgroundColor: '#F8F8F8',
