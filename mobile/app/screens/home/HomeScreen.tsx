@@ -357,7 +357,7 @@ const HomeScreen = () => {
           <ScrollView ref={brandsScrollRef} horizontal showsHorizontalScrollIndicator={false}
             scrollEnabled={false}
             contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}>
-            {[...brands, ...brands].map((brand: any, i: number) => (
+            {(brands.length >= 4 ? [...brands, ...brands] : brands).map((brand: any, i: number) => (
               <TouchableOpacity key={`${brand._id}_${i}`}
                 onPress={() => navigation.navigate('CatalogTab', { screen: 'Catalog', params: { brand: brand._id } })}
                 style={{ width: 78, alignItems: 'center' }}>
