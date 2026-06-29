@@ -1,6 +1,7 @@
 import './app/i18n';
 
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -22,7 +23,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const navigationRef    = useRef<any>(null);
+  const navigationRef = useRef<any>(null);
   const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
@@ -37,7 +38,16 @@ export default function App() {
       const token = await registerForPushNotifications(lang);
       if (token) await savePushTokenToServer(token);
     };
+
+    // Login/register bo'lganda so'r
     register();
+
+    // Har safar ilova foreground'ga kelganda so'r (ruxsat bo'lmasa)
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        register();
+      }
+    });
 
     const removeListeners = addNotificationListeners(
       () => {
@@ -53,7 +63,10 @@ export default function App() {
       },
     );
 
-    return removeListeners;
+    return () => {
+      subscription.remove();
+      removeListeners();
+    };
   }, [isAuthenticated]);
 
   return (

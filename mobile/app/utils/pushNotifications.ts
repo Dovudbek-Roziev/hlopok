@@ -8,20 +8,22 @@ const isExpoGo =
 
 const TEXTS = {
   ru: {
-    title: 'Разрешите уведомления',
-    message: 'Включите уведомления, чтобы получать информацию о заказах и акциях.',
+    title: '🔔 Включите уведомления',
+    message:
+      'Уведомления нужны, чтобы:\n\n• Вы знали статус вашего заказа\n• Получали информацию об акциях и скидках\n• Не пропускали важные новости магазина\n\nПожалуйста, разрешите уведомления в настройках.',
     settings: 'Открыть настройки',
     cancel: 'Позже',
   },
   ky: {
-    title: 'Билдирүүлөргө уруксат бериңиз',
-    message: 'Буйрутмалар жана акциялар жөнүндө билдирүү алуу үчүн билдирүүлөрдү жандырыңыз.',
+    title: '🔔 Билдирүүлөрдү жандырыңыз',
+    message:
+      'Билдирүүлөр зарыл, себеби:\n\n• Буйрутмаңыздын абалын билесиз\n• Акциялар жана арзандатуулар жөнүндө кабар аласыз\n• Дүкөндүн маанилүү жаңылыктарын өткөрүп жибербейсиз\n\nАдалыктар жөндөөсүнөн билдирүүлөргө уруксат бериңиз.',
     settings: 'Жөндөөлөрдү ачуу',
     cancel: 'Кийинчерээк',
   },
 };
 
-const showSettingsAlert = (lang: string) => {
+const showEducationalAlert = (lang: string) => {
   const t = TEXTS[lang as keyof typeof TEXTS] || TEXTS.ru;
   Alert.alert(t.title, t.message, [
     { text: t.cancel, style: 'cancel' },
@@ -48,37 +50,55 @@ export const registerForPushNotifications = async (lang = 'ru'): Promise<string 
     const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
 
     if (existingStatus === 'granted') {
-      // Ruxsat bor — token olish
-    } else if (canAskAgain) {
+      // Ruxsat bor — token olamiz
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('orders', {
+          name: 'Заказы / Буйрутмалар',
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FFD700',
+          sound: 'default',
+        });
+      }
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        Constants.easConfig?.projectId;
+      const token = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : {}
+      );
+      return token.data;
+    }
+
+    if (canAskAgain) {
+      // Tizim dialogi chiqarish
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
-        showSettingsAlert(lang);
+        // Rad etdi — tushuntirish alertini ko'rsatish
+        showEducationalAlert(lang);
         return null;
       }
-    } else {
-      // Doimiy rad etilgan — sozlamalarga yo'naltir
-      showSettingsAlert(lang);
-      return null;
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('orders', {
+          name: 'Заказы / Буйрутмалар',
+          importance: Notifications.AndroidImportance.HIGH,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FFD700',
+          sound: 'default',
+        });
+      }
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        Constants.easConfig?.projectId;
+      const token = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : {}
+      );
+      return token.data;
     }
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('orders', {
-        name: 'Заказы / Буйрутмалар',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FFD700',
-        sound: 'default',
-      });
-    }
-
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId;
-    const token = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : {}
-    );
-
-    return token.data;
+    // Doimiy rad etilgan — sozlamalarga yo'naltir
+    showEducationalAlert(lang);
+    return null;
   } catch {
     return null;
   }
