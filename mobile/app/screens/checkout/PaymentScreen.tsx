@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Linking, ScrollView, TouchableOpacity, View, Image } from 'react-native';
+import { Linking, ScrollView, TouchableOpacity, View, Image } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -183,7 +183,7 @@ const PaymentScreen = () => {
       await Linking.openURL(url);
       setWhatsappSent(true);
     } catch {
-      Alert.alert(t('common.error'), 'WhatsApp топулган жок');
+      setLinkError(t('checkout.whatsappNotFound'));
     }
   };
 
@@ -204,15 +204,14 @@ const PaymentScreen = () => {
     });
   };
 
-  const openBank = async (link: string, bankName: string) => {
-    if (!link) {
-      Alert.alert(bankName, t('checkout.paymentLinkNotSet'));
-      return;
-    }
+  const [linkError, setLinkError] = useState('');
+
+  const openBank = async (link: string) => {
+    if (!link) return;
     try {
       await Linking.openURL(link);
     } catch {
-      Alert.alert(t('common.error'), t('checkout.paymentLinkNotSet'));
+      setLinkError(t('checkout.paymentLinkNotSet'));
     }
   };
 
@@ -278,6 +277,14 @@ const PaymentScreen = () => {
           )}
         </YStack>
 
+        {/* ── Link xatosi ── */}
+        {!!linkError && (
+          <YStack backgroundColor={Colors.redBg} borderRadius={12} padding={12}
+            borderWidth={1} borderColor={Colors.red}>
+            <Text color={Colors.red} fontSize={13} textAlign="center">{linkError}</Text>
+          </YStack>
+        )}
+
         {/* ── QR Код ── */}
         <YStack gap={12}>
           <Text fontSize={15} fontWeight="800" color={Colors.black}>
@@ -290,7 +297,7 @@ const PaymentScreen = () => {
               {/* Mbank QR */}
               {STORE_INFO.paymentQR ? (
                 <TouchableOpacity
-                  onPress={() => openBank(STORE_INFO.paymentLink, 'Mbank')}
+                  onPress={() => openBank(STORE_INFO.paymentLink)}
                   activeOpacity={0.85}
                   style={{ flex: 1, borderRadius: 16, overflow: 'hidden',
                     backgroundColor: Colors.white, borderWidth: 1.5, borderColor: '#007A3D' }}
@@ -315,7 +322,7 @@ const PaymentScreen = () => {
               {/* O! Business QR */}
               {STORE_INFO.paymentQR2 ? (
                 <TouchableOpacity
-                  onPress={() => openBank(STORE_INFO.paymentLink2, 'O! Business')}
+                  onPress={() => openBank(STORE_INFO.paymentLink2)}
                   activeOpacity={0.85}
                   style={{ flex: 1, borderRadius: 16, overflow: 'hidden',
                     backgroundColor: Colors.white, borderWidth: 1.5, borderColor: '#E91E8C' }}
@@ -342,11 +349,11 @@ const PaymentScreen = () => {
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <MbankLogo
                 label={tapLabel}
-                onPress={() => openBank(STORE_INFO.paymentLink, 'Mbank')}
+                onPress={() => openBank(STORE_INFO.paymentLink)}
               />
               <OBusinessLogo
                 label={tapLabel}
-                onPress={() => openBank(STORE_INFO.paymentLink2, 'O! Business')}
+                onPress={() => openBank(STORE_INFO.paymentLink2)}
               />
             </View>
           )}

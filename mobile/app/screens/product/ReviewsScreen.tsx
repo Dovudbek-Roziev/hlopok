@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -77,6 +77,7 @@ const ReviewsScreen = () => {
 
   const [myRating,  setMyRating]  = useState(0);
   const [myComment, setMyComment] = useState('');
+  const [reviewMsg, setReviewMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   // Barcha reviewlar
   const { data: reviewData, isLoading } = useQuery({
@@ -97,10 +98,12 @@ const ReviewsScreen = () => {
       qc.invalidateQueries({ queryKey: ['reviews', productId] });
       qc.invalidateQueries({ queryKey: ['can-review', productId] });
       qc.invalidateQueries({ queryKey: ['product-rating', productId] });
-      Alert.alert('', t('reviews.reviewSent'));
+      setMyRating(0);
+      setMyComment('');
+      setReviewMsg({ text: t('reviews.reviewSent'), ok: true });
     },
     onError: () => {
-      Alert.alert(t('common.error'), t('reviews.cannotReview'));
+      setReviewMsg({ text: t('reviews.cannotReview'), ok: false });
     },
   });
 
@@ -189,6 +192,16 @@ const ReviewsScreen = () => {
                 }}
                 placeholderTextColor={Colors.gray}
               />
+
+              {!!reviewMsg && (
+                <YStack borderRadius={12} padding={12}
+                  backgroundColor={reviewMsg.ok ? Colors.greenBg : Colors.redBg}
+                  borderWidth={1} borderColor={reviewMsg.ok ? Colors.green : Colors.red}>
+                  <Text fontSize={13} color={reviewMsg.ok ? Colors.green : Colors.red}>
+                    {reviewMsg.text}
+                  </Text>
+                </YStack>
+              )}
 
               <TouchableOpacity
                 onPress={handleSubmit}

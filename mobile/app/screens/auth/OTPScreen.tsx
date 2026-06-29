@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, TextInput, TouchableOpacity, View, StatusBar, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, TextInput, TouchableOpacity, View, StatusBar, StyleSheet } from 'react-native';
 import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -134,8 +134,9 @@ const OTPScreen = () => {
 
       {/* ── White card ── */}
       <YStack flex={1} backgroundColor="#FFFFFF"
-        borderTopLeftRadius={28} borderTopRightRadius={28} marginTop={-24}
-        paddingHorizontal={24} paddingTop={32}>
+        borderTopLeftRadius={28} borderTopRightRadius={28} marginTop={-24}>
+      <ScrollView keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 32 }}>
 
         {/* Phone input (only before code sent) */}
         {!codeSent && (
@@ -237,6 +238,7 @@ const OTPScreen = () => {
           </YStack>
         )}
 
+      </ScrollView>
       </YStack>
       </ScreenWrapper>
     </KeyboardAvoidingView>

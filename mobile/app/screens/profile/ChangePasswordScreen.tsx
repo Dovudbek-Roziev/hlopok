@@ -1,6 +1,6 @@
 // Parol o'zgartirish ekrani / Change password screen
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text, Input, Button, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -49,7 +49,8 @@ const ChangePasswordScreen = () => {
           <Text fontSize={18} fontWeight="bold" color={Colors.black}>{t('profile.changePassword')}</Text>
         </XStack>
 
-        <YStack margin={12} backgroundColor={Colors.white} borderRadius={12} padding={16} gap={12}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 12 }}>
+        <YStack backgroundColor={Colors.white} borderRadius={12} padding={16} gap={12}>
           <Input value={old_} onChangeText={(v: string) => { setOld(v); setError(''); }}
             placeholder={t('auth.currentPasswordPlaceholder')} secureTextEntry
             borderColor={Colors.border} borderRadius={10} height={48} paddingHorizontal="$4" />
@@ -75,6 +76,7 @@ const ChangePasswordScreen = () => {
             {loading ? <Spinner color={Colors.black} /> : <Text fontWeight="bold" color={Colors.black}>{t('common.save')}</Text>}
           </Button>
         </YStack>
+        </ScrollView>
       </YStack>
       </ScreenWrapper>
     </KeyboardAvoidingView>

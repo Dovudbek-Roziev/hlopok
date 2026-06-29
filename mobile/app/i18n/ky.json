@@ -238,6 +238,8 @@
     "paymentPendingSubtitle": "Буйрутманы тастыктоо үчүн төлөңүз",
     "paymentChooseBank": "Төлөө үчүн банкты тандаңыз",
     "paymentTapHint": "Банкка таптаңыз — колдонмо автоматтык ачылат",
+    "paymentLinkNotSet": "Төлөм шилтемеси орнотулган жок",
+    "whatsappNotFound": "WhatsApp түзмөктө орнотулган жок",
     "paymentAfterPay": "Төлөгөндөн кийин чекти жибериңиз:",
     "paymentSendWhatsApp": "WhatsApp аркылуу чек жибер",
     "paymentLinkNotSet": "Шилтеме орнотулган эмес. Сатуучуга кайрылыңыз.",

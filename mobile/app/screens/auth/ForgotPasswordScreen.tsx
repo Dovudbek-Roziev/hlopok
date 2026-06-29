@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +21,7 @@ const ForgotPasswordScreen = () => {
   const [newPwd, setNewPwd]     = useState('');
   const [loading, setLoading]   = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [error, setError]       = useState('');
 
   const inp = {
     height: 52, borderRadius: 12, paddingHorizontal: 16,
@@ -39,9 +40,10 @@ const ForgotPasswordScreen = () => {
   const sendCode = async (resend = false) => {
     const clean = phone.replace(/\D/g, '');
     if (clean.length < 10) {
-      Alert.alert('', t('auth.forgotPhone') + ' — 0XXXXXXXXX');
+      setError(t('auth.forgotPhone') + ' — 0XXXXXXXXX');
       return;
     }
+    setError('');
     setLoading(true);
     try {
       const r = await fetch(`${API_URL}/auth/send-reset-otp`, {
@@ -50,11 +52,11 @@ const ForgotPasswordScreen = () => {
         body: JSON.stringify({ phone: clean }),
       });
       const data = await r.json();
-      if (!r.ok) { Alert.alert('', data.message || t('common.error')); return; }
+      if (!r.ok) { setError(data.message || t('common.error')); return; }
       startCountdown();
       if (!resend) setStep('code');
     } catch {
-      Alert.alert('', t('common.error'));
+      setError(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -62,13 +64,14 @@ const ForgotPasswordScreen = () => {
 
   const verifyAndReset = async () => {
     if (code.length !== 4) {
-      Alert.alert('', t('auth.forgotCodePlaceholder'));
+      setError(t('auth.forgotCodePlaceholder'));
       return;
     }
     if (newPwd.length < 6) {
-      Alert.alert('', t('auth.forgotNewPasswordPlaceholder'));
+      setError(t('auth.forgotNewPasswordPlaceholder'));
       return;
     }
+    setError('');
     setLoading(true);
     try {
       const clean = phone.replace(/\D/g, '');
@@ -78,10 +81,10 @@ const ForgotPasswordScreen = () => {
         body: JSON.stringify({ phone: clean, code, newPassword: newPwd }),
       });
       const data = await r.json();
-      if (!r.ok) { Alert.alert('', data.message || t('common.error')); return; }
+      if (!r.ok) { setError(data.message || t('common.error')); return; }
       setStep('success');
     } catch {
-      Alert.alert('', t('common.error'));
+      setError(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -143,7 +146,13 @@ const ForgotPasswordScreen = () => {
                   </XStack>
                 </YStack>
 
-                <TouchableOpacity onPress={() => sendCode(false)} disabled={loading}
+                {!!error && (
+                  <YStack backgroundColor={Colors.redBg} borderRadius={12} padding={12}
+                    borderWidth={1} borderColor={Colors.red}>
+                    <Text color={Colors.red} fontSize={13}>{error}</Text>
+                  </YStack>
+                )}
+                <TouchableOpacity onPress={() => { setError(''); sendCode(false); }} disabled={loading}
                   style={{ backgroundColor: Colors.yellow, borderRadius: 14, height: 54,
                     alignItems: 'center', justifyContent: 'center', opacity: loading ? 0.7 : 1 }}>
                   <Text fontWeight="800" color={Colors.black} fontSize={15}>
@@ -195,6 +204,12 @@ const ForgotPasswordScreen = () => {
                 </YStack>
 
                 <YStack gap={12}>
+                  {!!error && (
+                    <YStack backgroundColor={Colors.redBg} borderRadius={12} padding={12}
+                      borderWidth={1} borderColor={Colors.red}>
+                      <Text color={Colors.red} fontSize={13}>{error}</Text>
+                    </YStack>
+                  )}
                   <TouchableOpacity onPress={verifyAndReset} disabled={loading}
                     style={{ backgroundColor: Colors.yellow, borderRadius: 14, height: 54,
                       alignItems: 'center', justifyContent: 'center', opacity: loading ? 0.7 : 1 }}>

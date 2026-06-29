@@ -31,11 +31,11 @@ const ReceiptModal = ({ order, onClose }: { order: any; onClose: () => void }) =
   const handleShare = async () => {
     const lines: string[] = [];
     lines.push('━━━━━━━━━━━━━━━━━━━━');
-    lines.push(`🧾 ${t('checkout.receiptHeader')} — ХЛОПОК`);
+    lines.push(`${t('checkout.receiptHeader')} — ХЛОПОК`);
     lines.push(`${t('checkout.storeTagline')}`);
     lines.push('━━━━━━━━━━━━━━━━━━━━');
-    lines.push(`📋 ${order.orderNumber}`);
-    lines.push(`📅 ${formatDateTime(order.createdAt)}`);
+    lines.push(`# ${order.orderNumber}`);
+    lines.push(`${formatDateTime(order.createdAt)}`);
     lines.push('');
     lines.push(`${t('checkout.receiptRecipient')}: ${order.contactName || ''}`);
     lines.push(`${t('checkout.receiptPhone')}: ${order.contactPhone || ''}`);
@@ -49,10 +49,10 @@ const ReceiptModal = ({ order, onClose }: { order: any; onClose: () => void }) =
     if (order.bonusUsed > 0) {
       lines.push(`${t('checkout.receiptBonus')}: -${formatPrice(order.bonusUsed)}`);
     }
-    lines.push(`💰 ${t('checkout.totalAmount')}: ${formatPrice(order.total)}`);
+    lines.push(`${t('checkout.totalAmount')}: ${formatPrice(order.total)}`);
     lines.push(`${t('checkout.receiptPaymentLabel')}: ${order.paymentMethod === 'online' ? t('checkout.paymentOnlineCard') : t('checkout.paymentCash')}`);
     lines.push('');
-    lines.push(`✅ ${t('checkout.receiptThanks')}`);
+    lines.push(t('checkout.receiptThanks'));
     lines.push('━━━━━━━━━━━━━━━━━━━━');
 
     await Share.share({ message: lines.join('\n') });
@@ -420,19 +420,19 @@ const OrderDetailScreen = () => {
             onPress={async () => {
               const lines: string[] = [];
               lines.push('━━━━━━━━━━━━━━━━━━━━');
-              lines.push(`🧾 ЧЕК — ХЛОПОК`);
+              lines.push(`${t('checkout.receiptHeader')} — ХЛОПОК`);
               lines.push('━━━━━━━━━━━━━━━━━━━━');
-              lines.push(`📋 ${order.orderNumber}`);
-              lines.push(`📅 ${formatDateTime(order.createdAt)}`);
+              lines.push(`# ${order.orderNumber}`);
+              lines.push(`${formatDateTime(order.createdAt)}`);
               lines.push('');
               (order.items || []).forEach((item: any) => {
                 const name = item[`name_${lang}`] || item.name_ru || '';
                 lines.push(`• ${name} (${getSizeLabel(item.size, lang)}) ×${item.qty} — ${formatPrice(item.price * item.qty)}`);
               });
               lines.push('');
-              if (order.bonusUsed > 0) lines.push(`Скидка бонусами: -${formatPrice(order.bonusUsed)}`);
-              lines.push(`💰 Итого: ${formatPrice(order.total)}`);
-              lines.push('✅ Спасибо за заказ!');
+              if (order.bonusUsed > 0) lines.push(`${t('checkout.receiptBonus')}: -${formatPrice(order.bonusUsed)}`);
+              lines.push(`${t('checkout.totalAmount')}: ${formatPrice(order.total)}`);
+              lines.push(t('checkout.receiptThanks'));
               lines.push('━━━━━━━━━━━━━━━━━━━━');
               await Share.share({ message: lines.join('\n') });
             }}

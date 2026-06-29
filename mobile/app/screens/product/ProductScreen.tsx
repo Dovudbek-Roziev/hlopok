@@ -4,7 +4,7 @@ import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, Heart, Share2, ShoppingCart, ChevronDown, ChevronUp, Star, MessageSquare, X } from 'lucide-react-native';
+import { ChevronLeft, Heart, Share2, ShoppingCart, ChevronDown, ChevronUp, Star, MessageSquare, X, PackageX } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { productsApi, activePromosApi } from '../../api/products';
 import { authApi } from '../../api/auth';
@@ -259,7 +259,7 @@ const ProductScreen = () => {
             <YStack backgroundColor="#FFF3F3" borderRadius={14} padding={14} gap={6}
               borderLeftWidth={4} borderLeftColor={Colors.red}>
               <XStack alignItems="center" gap={8}>
-                <Text fontSize={22}>😔</Text>
+                <PackageX color={Colors.red} size={22} />
                 <Text fontSize={15} fontWeight="700" color={Colors.red}>
                   {t('product.outOfStockTitle')}
                 </Text>

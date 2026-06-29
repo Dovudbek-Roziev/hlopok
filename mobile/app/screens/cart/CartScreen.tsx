@@ -1,10 +1,10 @@
-import React from 'react';
-import { Alert, FlatList, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, Modal, TouchableOpacity, View } from 'react-native';
 import { YStack, XStack, Text, Image } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import { Trash2, Plus, Minus, ShoppingBag, Package, ChevronRight } from 'lucide-react-native';
+import { Trash2, Plus, Minus, ShoppingBag, Package, ChevronRight, CircleX } from 'lucide-react-native';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../theme/useColors';
@@ -19,6 +19,8 @@ const CartScreen = () => {
   const { items, removeItem, updateQty, totalPrice } = useCartStore();
   const { isAuthenticated, user } = useAuthStore();
   const lang = i18n.language === 'ky' ? 'ky' : 'ru';
+
+  const [removeTarget, setRemoveTarget] = useState<{ productId: string; size: string; color: string } | null>(null);
 
   if (items.length === 0) {
     return (
@@ -68,15 +70,9 @@ const CartScreen = () => {
                 <Text numberOfLines={2} fontSize={14} fontWeight="600" color={Colors.black} flex={1} marginRight={8}>
                   {item[`name_${lang}`]}
                 </Text>
-                <TouchableOpacity onPress={() => Alert.alert(
-                  t('cart.removeTitle'),
-                  t('cart.removeConfirm'),
-                  [
-                    { text: t('common.cancel'), style: 'cancel' },
-                    { text: t('cart.remove'), style: 'destructive',
-                      onPress: () => removeItem(item.productId, item.size, item.color) },
-                  ]
-                )}>
+                <TouchableOpacity
+                  onPress={() => setRemoveTarget({ productId: item.productId, size: item.size, color: item.color })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Trash2 color={Colors.red} size={16} />
                 </TouchableOpacity>
               </XStack>
@@ -152,6 +148,44 @@ const CartScreen = () => {
       </YStack>
     </YStack>
     </ScreenWrapper>
+
+    {/* ── O'chirish tasdiqlash modali ── */}
+    <Modal visible={!!removeTarget} transparent animationType="slide">
+      <YStack flex={1} backgroundColor="rgba(0,0,0,0.5)" justifyContent="flex-end">
+        <YStack backgroundColor={Colors.white} borderTopLeftRadius={24} borderTopRightRadius={24}
+          padding={24} gap={16}>
+          <YStack alignItems="center" gap={10}>
+            <YStack width={56} height={56} borderRadius={28} backgroundColor={Colors.redBg}
+              alignItems="center" justifyContent="center">
+              <CircleX color={Colors.red} size={28} />
+            </YStack>
+            <Text fontSize={17} fontWeight="800" color={Colors.black} textAlign="center">
+              {t('cart.removeTitle')}
+            </Text>
+            <Text fontSize={14} color={Colors.gray} textAlign="center">
+              {t('cart.removeConfirm')}
+            </Text>
+          </YStack>
+          <XStack gap={12}>
+            <TouchableOpacity onPress={() => setRemoveTarget(null)}
+              style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: Colors.bg,
+                alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: Colors.border }}>
+              <Text fontWeight="700" color={Colors.grayDark} fontSize={15}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (removeTarget) removeItem(removeTarget.productId, removeTarget.size, removeTarget.color);
+                setRemoveTarget(null);
+              }}
+              style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: Colors.red,
+                alignItems: 'center', justifyContent: 'center' }}>
+              <Text fontWeight="700" color={Colors.white} fontSize={15}>{t('cart.remove')}</Text>
+            </TouchableOpacity>
+          </XStack>
+        </YStack>
+      </YStack>
+    </Modal>
   );
 };
 
