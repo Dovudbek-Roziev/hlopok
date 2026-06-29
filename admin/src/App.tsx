@@ -17,6 +17,7 @@ import BrandsPage from './pages/BrandsPage';
 import PromotionsPage from './pages/PromotionsPage';
 import SettingsPage from './pages/SettingsPage';
 import FAQPage from './pages/FAQPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
@@ -47,6 +48,7 @@ const App = () => (
           <Route path="settings" element={<SettingsPage />} />
           <Route path="faq" element={<FAQPage />} />
         </Route>
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
