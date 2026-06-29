@@ -204,8 +204,9 @@ const OrderDetailScreen = () => {
   const lang         = i18n.language === 'ky' ? 'ky' : 'ru';
 
   const storeInfo    = useStoreInfo();
-  const [cancelling, setCancelling]   = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
+  const [cancelling, setCancelling]     = useState(false);
+  const [showReceipt, setShowReceipt]   = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', id],
@@ -213,30 +214,21 @@ const OrderDetailScreen = () => {
   });
 
   const handleCancel = () => {
-    const isPaidOnline = order?.paymentMethod === 'online' && order?.paymentStatus === 'confirmed';
-    Alert.alert(
-      t('orders.cancelTitle'),
-      isPaidOnline ? t('orders.cancelConfirmOnline') : t('orders.cancelConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('orders.cancelBtn'),
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              await ordersApi.cancelOrder(id);
-              queryClient.invalidateQueries({ queryKey: ['order', id] });
-              queryClient.invalidateQueries({ queryKey: ['my-orders'] });
-            } catch {
-              Alert.alert(t('common.error'), t('orders.cancelError'));
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ]
-    );
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = async () => {
+    setShowCancelModal(false);
+    setCancelling(true);
+    try {
+      await ordersApi.cancelOrder(id);
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+    } catch {
+      Alert.alert(t('common.error'), t('orders.cancelError'));
+    } finally {
+      setCancelling(false);
+    }
   };
 
   if (isLoading) {
@@ -474,6 +466,65 @@ const OrderDetailScreen = () => {
 
     {showReceipt && order && (
       <ReceiptModal order={order} onClose={() => setShowReceipt(false)} />
+    )}
+
+    {/* Cancel confirmation modal */}
+    {showCancelModal && order && (
+      <Modal visible animationType="slide" transparent onRequestClose={() => setShowCancelModal(false)}>
+        <YStack flex={1} backgroundColor="rgba(0,0,0,0.5)" justifyContent="flex-end">
+          <YStack backgroundColor={Colors.white} borderTopLeftRadius={24} borderTopRightRadius={24}
+            padding={24} paddingBottom={40} gap={20}>
+
+            {/* Icon */}
+            <YStack alignItems="center" gap={12}>
+              <YStack width={64} height={64} borderRadius={32} backgroundColor={Colors.redBg}
+                alignItems="center" justifyContent="center">
+                <CircleX color={Colors.red} size={34} />
+              </YStack>
+              <Text fontSize={18} fontWeight="800" color={Colors.black} textAlign="center">
+                {t('orders.cancelTitle')}
+              </Text>
+            </YStack>
+
+            {/* Online payment warning */}
+            {order.paymentMethod === 'online' && order.paymentStatus === 'confirmed' ? (
+              <YStack backgroundColor={Colors.redBg} borderRadius={14} padding={16} gap={10}>
+                <XStack alignItems="center" gap={8}>
+                  <CreditCard color={Colors.red} size={20} />
+                  <Text fontSize={14} fontWeight="700" color={Colors.red}>
+                    {lang === 'ky' ? 'Онлайн төлөм' : 'Онлайн оплата'}
+                  </Text>
+                </XStack>
+                <Text fontSize={13} color={Colors.red} lineHeight={20}>
+                  {t('orders.cancelConfirmOnline')}
+                </Text>
+              </YStack>
+            ) : (
+              <YStack backgroundColor={Colors.bg} borderRadius={14} padding={16}>
+                <Text fontSize={14} color={Colors.grayDark} lineHeight={22} textAlign="center">
+                  {t('orders.cancelConfirm')}
+                </Text>
+              </YStack>
+            )}
+
+            {/* Buttons */}
+            <YStack gap={10}>
+              <TouchableOpacity onPress={confirmCancel}
+                style={{ backgroundColor: Colors.red, borderRadius: 14, height: 52,
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <CircleX color={Colors.white} size={18} />
+                <Text fontWeight="700" color={Colors.white} fontSize={15}>{t('orders.cancelBtn')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowCancelModal(false)}
+                style={{ backgroundColor: Colors.bg, borderRadius: 14, height: 52,
+                  alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.border }}>
+                <Text fontWeight="600" color={Colors.black} fontSize={15}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            </YStack>
+
+          </YStack>
+        </YStack>
+      </Modal>
     )}
 
     </ScreenWrapper>
