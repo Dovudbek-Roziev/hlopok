@@ -4,13 +4,43 @@ import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MessageCircle, CircleCheck, ChevronRight } from 'lucide-react-native';
+import Svg, {
+  Defs, LinearGradient as SvgGradient, Stop, Circle as SvgCircle,
+  Path, Rect,
+} from 'react-native-svg';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useColors } from '../../theme/useColors';
 import { formatPrice } from '../../utils/format';
 import { useStoreInfo } from '../../utils/useStoreInfo';
 import { getSizeLabel } from '../../utils/sizeLabel';
 
-// ── Mbank логотипи ────────────────────────────────────────────────────────────
+// ── Mbank SVG логотипи ────────────────────────────────────────────────────────
+const MbankIcon = ({ size = 52 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Defs>
+      <SvgGradient id="mbG" x1="0.1" y1="0.05" x2="0.9" y2="0.95">
+        <Stop offset="0" stopColor="#20CF84" />
+        <Stop offset="1" stopColor="#0B7A52" />
+      </SvgGradient>
+    </Defs>
+    <SvgCircle cx="50" cy="50" r="50" fill="url(#mbG)" />
+    {/* Yellow left shape — angled pillar (M left half) */}
+    <Path
+      d="M19,78 L19,44 C19,30 27,22 37,26 C43,28 48,35 48,44 L48,78 Z"
+      fill="#FFC300"
+    />
+    {/* Rounded top cap for yellow shape */}
+    <SvgCircle cx="33.5" cy="26" r="14.5" fill="#FFC300" />
+    {/* White right shape — "1" pillar */}
+    <Rect x="56" y="22" width="20" height="56" rx="10" fill="#FFFFFF" />
+    <SvgCircle cx="66" cy="32" r="10" fill="#FFFFFF" />
+    {/* Foot of "1" */}
+    <Rect x="49" y="74" width="35" height="11" rx="5.5" fill="#FFFFFF" />
+    {/* Serif stroke at top-left of "1" */}
+    <Path d="M56,33 L46,46" stroke="#FFFFFF" strokeWidth="8" strokeLinecap="round" />
+  </Svg>
+);
+
 const MbankLogo = ({
   onPress,
   label,
@@ -25,76 +55,48 @@ const MbankLogo = ({
       flex: 1,
       borderRadius: 20,
       overflow: 'hidden',
-      shadowColor: '#007A3D',
+      shadowColor: '#0B7A52',
       shadowOpacity: 0.45,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
       elevation: 10,
     }}
   >
-    {/* Жашыл фон */}
-    <View style={{ backgroundColor: '#007A3D', padding: 20, paddingBottom: 14 }}>
-      {/* M тамгасы */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-        <View
-          style={{
-            width: 46,
-            height: 46,
-            borderRadius: 13,
-            backgroundColor: 'rgba(255,255,255,0.18)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text
-            style={{
-              color: '#fff',
-              fontSize: 30,
-              fontWeight: '900',
-              fontStyle: 'italic',
-              lineHeight: 34,
-            }}
-          >
-            M
-          </Text>
-        </View>
-        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', letterSpacing: 0.3 }}>
+    <View style={{ backgroundColor: '#0DAD6F', padding: 20, paddingBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <MbankIcon size={52} />
+        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800', letterSpacing: 0.2 }}>
           bank
         </Text>
       </View>
-      {/* ELQR белгиси */}
-      <View
-        style={{
-          alignSelf: 'flex-start',
-          backgroundColor: 'rgba(255,255,255,0.22)',
-          borderRadius: 6,
-          paddingHorizontal: 8,
-          paddingVertical: 3,
-        }}
-      >
-        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>
-          ELQR
-        </Text>
+      <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>ELQR</Text>
       </View>
     </View>
-    {/* Төмөнкү тилке */}
-    <View
-      style={{
-        backgroundColor: '#005C2E',
-        paddingVertical: 11,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-      }}
-    >
+    <View style={{ backgroundColor: '#0A8A58', paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
       <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{label}</Text>
       <ChevronRight color="#fff" size={14} />
     </View>
   </TouchableOpacity>
 );
 
-// ── O! Business логотипи ──────────────────────────────────────────────────────
+// ── O! Business SVG логотипи ──────────────────────────────────────────────────
+const OBusinessIcon = ({ size = 52 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 100 100">
+    {/* Speech bubble shape: square body + bottom-left tail */}
+    <Path
+      d="M10,8 Q10,0 18,0 L92,0 Q100,0 100,8 L100,76 Q100,84 92,84 L30,84 L10,100 L10,84 Q10,84 10,76 Z"
+      fill="#D81B8A"
+    />
+    {/* White O ring */}
+    <SvgCircle cx="44" cy="40" r="24" fill="none" stroke="#FFFFFF" strokeWidth="13" />
+    {/* White exclamation dot */}
+    <SvgCircle cx="79" cy="70" r="7" fill="#FFFFFF" />
+    {/* White exclamation line */}
+    <Rect x="73" y="14" width="12" height="44" rx="6" fill="#FFFFFF" />
+  </Svg>
+);
+
 const OBusinessLogo = ({
   onPress,
   label,
@@ -109,59 +111,25 @@ const OBusinessLogo = ({
       flex: 1,
       borderRadius: 20,
       overflow: 'hidden',
-      shadowColor: '#000',
+      shadowColor: '#D81B8A',
       shadowOpacity: 0.4,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
       elevation: 10,
     }}
   >
-    {/* Кара фон */}
     <View style={{ backgroundColor: '#111111', padding: 20, paddingBottom: 14 }}>
-      {/* O! логотипи */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <View
-          style={{
-            width: 46,
-            height: 46,
-            borderRadius: 13,
-            backgroundColor: '#E91E8C',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 20, fontWeight: '900', lineHeight: 24 }}>O!</Text>
-        </View>
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <OBusinessIcon size={52} />
+        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 0.2 }}>
           Business
         </Text>
       </View>
-      {/* ELQR белгиси */}
-      <View
-        style={{
-          alignSelf: 'flex-start',
-          backgroundColor: '#E91E8C',
-          borderRadius: 6,
-          paddingHorizontal: 8,
-          paddingVertical: 3,
-        }}
-      >
-        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>
-          ELQR
-        </Text>
+      <View style={{ alignSelf: 'flex-start', backgroundColor: '#D81B8A', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>ELQR</Text>
       </View>
     </View>
-    {/* Төмөнкү тилке */}
-    <View
-      style={{
-        backgroundColor: '#E91E8C',
-        paddingVertical: 11,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-      }}
-    >
+    <View style={{ backgroundColor: '#D81B8A', paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
       <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{label}</Text>
       <ChevronRight color="#fff" size={14} />
     </View>
