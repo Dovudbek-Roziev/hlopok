@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, ScrollView, TouchableOpacity, Modal, Share } from 'react-native';
 import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, MapPin, CircleX, Star, Truck, Package, Check } from 'lucide-react-native';
+import { ChevronLeft, MapPin, CircleX, Star, Truck, Package, Check, Receipt, Share2, X } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { ordersApi } from '../../api/orders';
 import { useColors } from '../../theme/useColors';
@@ -22,6 +22,178 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: '#E53935',
 };
 
+// ─── Чек модал / Receipt modal ────────────────────────────────────────────────
+const ReceiptModal = ({ order, onClose }: { order: any; onClose: () => void }) => {
+  const Colors       = useColors();
+  const { t, i18n } = useTranslation();
+  const lang         = i18n.language === 'ky' ? 'ky' : 'ru';
+
+  const handleShare = async () => {
+    const lines: string[] = [];
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+    lines.push(`🧾 ${t('checkout.receiptHeader')} — ХЛОПОК`);
+    lines.push(`${t('checkout.storeTagline')}`);
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+    lines.push(`📋 ${order.orderNumber}`);
+    lines.push(`📅 ${formatDateTime(order.createdAt)}`);
+    lines.push('');
+    lines.push(`${t('checkout.receiptRecipient')}: ${order.contactName || ''}`);
+    lines.push(`${t('checkout.receiptPhone')}: ${order.contactPhone || ''}`);
+    lines.push('');
+    lines.push(`${t('orders.productsLabel')}:`);
+    (order.items || []).forEach((item: any) => {
+      const name = item[`name_${lang}`] || item.name_ru || '';
+      lines.push(`  • ${name} (${getSizeLabel(item.size, lang)}) ×${item.qty} — ${formatPrice(item.price * item.qty)}`);
+    });
+    lines.push('');
+    if (order.bonusUsed > 0) {
+      lines.push(`${t('checkout.receiptBonus')}: -${formatPrice(order.bonusUsed)}`);
+    }
+    lines.push(`💰 ${t('checkout.totalAmount')}: ${formatPrice(order.total)}`);
+    lines.push(`${t('checkout.receiptPaymentLabel')}: ${order.paymentMethod === 'online' ? t('checkout.paymentOnlineCard') : t('checkout.paymentCash')}`);
+    lines.push('');
+    lines.push(`✅ ${t('checkout.receiptThanks')}`);
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+
+    await Share.share({ message: lines.join('\n') });
+  };
+
+  const isDelivery = order.deliveryType === 'delivery';
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <YStack flex={1} backgroundColor="rgba(0,0,0,0.5)" justifyContent="flex-end">
+        <YStack backgroundColor={Colors.white} borderTopLeftRadius={24} borderTopRightRadius={24}
+          paddingBottom={40} maxHeight="90%">
+
+          {/* Modal header */}
+          <XStack paddingHorizontal={20} paddingTop={20} paddingBottom={12}
+            justifyContent="space-between" alignItems="center"
+            borderBottomWidth={1} borderBottomColor={Colors.border}>
+            <Text fontSize={17} fontWeight="700" color={Colors.black}>{t('checkout.receipt')}</Text>
+            <TouchableOpacity onPress={onClose}
+              style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.bg,
+                alignItems: 'center', justifyContent: 'center' }}>
+              <X color={Colors.gray} size={18} />
+            </TouchableOpacity>
+          </XStack>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 0 }}>
+
+            {/* Store header */}
+            <YStack alignItems="center" paddingVertical={16} gap={4}
+              borderBottomWidth={1} borderBottomColor={Colors.border} marginBottom={16}>
+              <Text fontSize={22} fontWeight="800" color={Colors.black} letterSpacing={2}>ХЛОПОК</Text>
+              <Text fontSize={12} color={Colors.gray}>{t('checkout.storeTagline')}</Text>
+              <YStack height={1} width={60} backgroundColor={Colors.yellow} marginTop={8} />
+            </YStack>
+
+            {/* Order info */}
+            <YStack gap={6} marginBottom={16}>
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{t('orders.ordersTitle') || 'Буйрутма'}</Text>
+                <Text fontSize={13} fontWeight="600" color={Colors.black}>{order.orderNumber}</Text>
+              </XStack>
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{t('orders.date') || 'Дата'}</Text>
+                <Text fontSize={13} color={Colors.black}>{formatDateTime(order.createdAt)}</Text>
+              </XStack>
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{t('checkout.receiptRecipient')}</Text>
+                <Text fontSize={13} color={Colors.black}>{order.contactName || '—'}</Text>
+              </XStack>
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{t('checkout.receiptPhone')}</Text>
+                <Text fontSize={13} color={Colors.black}>{order.contactPhone || '—'}</Text>
+              </XStack>
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{isDelivery ? t('checkout.methodDelivery') : t('checkout.pickup')}</Text>
+                <Text fontSize={13} color={Colors.black}>
+                  {isDelivery ? (order.deliveryAddress || '—') : t('checkout.pickupShort')}
+                </Text>
+              </XStack>
+            </YStack>
+
+            {/* Divider */}
+            <YStack borderStyle="dashed" borderTopWidth={1} borderTopColor={Colors.border} marginBottom={16} />
+
+            {/* Items */}
+            <YStack gap={10} marginBottom={16}>
+              {(order.items || []).map((item: any, i: number) => (
+                <XStack key={i} gap={10} alignItems="center">
+                  {item.image
+                    ? <Image source={{ uri: item.image }} width={44} height={44} borderRadius={8} resizeMode="cover" />
+                    : <YStack width={44} height={44} borderRadius={8} backgroundColor={Colors.grayLight}
+                        alignItems="center" justifyContent="center">
+                        <Package color={Colors.gray} size={18} />
+                      </YStack>
+                  }
+                  <YStack flex={1}>
+                    <Text fontSize={13} fontWeight="600" color={Colors.black} numberOfLines={2}>
+                      {item[`name_${lang}`] || item.name_ru}
+                    </Text>
+                    <Text fontSize={11} color={Colors.gray}>
+                      {getSizeLabel(item.size, lang)} × {item.qty}
+                    </Text>
+                  </YStack>
+                  <Text fontSize={13} fontWeight="700" color={Colors.green}>
+                    {formatPrice(item.price * item.qty)}
+                  </Text>
+                </XStack>
+              ))}
+            </YStack>
+
+            {/* Divider */}
+            <YStack borderStyle="dashed" borderTopWidth={1} borderTopColor={Colors.border} marginBottom={16} />
+
+            {/* Totals */}
+            <YStack gap={8} marginBottom={16}>
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{t('checkout.subtotal')}</Text>
+                <Text fontSize={13} color={Colors.black}>{formatPrice(order.subtotal)}</Text>
+              </XStack>
+              {order.bonusUsed > 0 && (
+                <XStack justifyContent="space-between">
+                  <Text fontSize={13} color={Colors.gray}>{t('checkout.receiptBonus')}</Text>
+                  <Text fontSize={13} color={Colors.green}>-{formatPrice(order.bonusUsed)}</Text>
+                </XStack>
+              )}
+              <XStack justifyContent="space-between">
+                <Text fontSize={13} color={Colors.gray}>{t('checkout.receiptPaymentLabel')}</Text>
+                <Text fontSize={13} color={Colors.black}>
+                  {order.paymentMethod === 'online' ? t('checkout.paymentOnlineCard') : t('checkout.paymentCash')}
+                </Text>
+              </XStack>
+              <YStack height={1} backgroundColor={Colors.border} />
+              <XStack justifyContent="space-between">
+                <Text fontSize={16} fontWeight="700" color={Colors.black}>{t('checkout.totalAmount')}</Text>
+                <Text fontSize={16} fontWeight="700" color={Colors.black}>{formatPrice(order.total)}</Text>
+              </XStack>
+            </YStack>
+
+            {/* Thanks */}
+            <YStack alignItems="center" paddingVertical={12} gap={4}>
+              <YStack height={1} width={60} backgroundColor={Colors.yellow} marginBottom={8} />
+              <Text fontSize={13} color={Colors.gray} textAlign="center">{t('checkout.receiptThanks')}</Text>
+            </YStack>
+
+          </ScrollView>
+
+          {/* Share button */}
+          <YStack paddingHorizontal={20} paddingTop={12}>
+            <TouchableOpacity onPress={handleShare}
+              style={{ backgroundColor: Colors.yellow, borderRadius: 14, height: 52,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Share2 color={Colors.black} size={18} />
+              <Text fontWeight="700" color={Colors.black} fontSize={15}>{t('checkout.shareReceipt')}</Text>
+            </TouchableOpacity>
+          </YStack>
+        </YStack>
+      </YStack>
+    </Modal>
+  );
+};
+
 const OrderDetailScreen = () => {
   const Colors       = useColors();
   const { t, i18n } = useTranslation();
@@ -32,7 +204,8 @@ const OrderDetailScreen = () => {
   const lang         = i18n.language === 'ky' ? 'ky' : 'ru';
 
   const storeInfo    = useStoreInfo();
-  const [cancelling, setCancelling] = useState(false);
+  const [cancelling, setCancelling]   = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', id],
@@ -230,6 +403,45 @@ const OrderDetailScreen = () => {
           </XStack>
         </YStack>
 
+        {/* Receipt buttons */}
+        <XStack gap={10}>
+          <TouchableOpacity onPress={() => setShowReceipt(true)} style={{ flex: 1 }}>
+            <XStack backgroundColor={Colors.white} borderRadius={12} height={48} borderWidth={1.5}
+              borderColor={Colors.border} alignItems="center" justifyContent="center" gap={8}>
+              <Receipt color={Colors.black} size={16} />
+              <Text fontWeight="600" color={Colors.black} fontSize={14}>{t('checkout.viewReceipt')}</Text>
+            </XStack>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={async () => {
+              const lines: string[] = [];
+              lines.push('━━━━━━━━━━━━━━━━━━━━');
+              lines.push(`🧾 ЧЕК — ХЛОПОК`);
+              lines.push('━━━━━━━━━━━━━━━━━━━━');
+              lines.push(`📋 ${order.orderNumber}`);
+              lines.push(`📅 ${formatDateTime(order.createdAt)}`);
+              lines.push('');
+              (order.items || []).forEach((item: any) => {
+                const name = item[`name_${lang}`] || item.name_ru || '';
+                lines.push(`• ${name} (${getSizeLabel(item.size, lang)}) ×${item.qty} — ${formatPrice(item.price * item.qty)}`);
+              });
+              lines.push('');
+              if (order.bonusUsed > 0) lines.push(`Скидка бонусами: -${formatPrice(order.bonusUsed)}`);
+              lines.push(`💰 Итого: ${formatPrice(order.total)}`);
+              lines.push('✅ Спасибо за заказ!');
+              lines.push('━━━━━━━━━━━━━━━━━━━━');
+              await Share.share({ message: lines.join('\n') });
+            }}
+            style={{ flex: 1 }}
+          >
+            <XStack backgroundColor={Colors.yellow} borderRadius={12} height={48}
+              alignItems="center" justifyContent="center" gap={8}>
+              <Share2 color={Colors.black} size={16} />
+              <Text fontWeight="600" color={Colors.black} fontSize={14}>{t('checkout.shareReceipt')}</Text>
+            </XStack>
+          </TouchableOpacity>
+        </XStack>
+
         {/* Cancel button */}
         {canCancel && (
           <TouchableOpacity onPress={handleCancel} disabled={cancelling}
@@ -247,6 +459,11 @@ const OrderDetailScreen = () => {
 
       </ScrollView>
     </YStack>
+
+    {showReceipt && order && (
+      <ReceiptModal order={order} onClose={() => setShowReceipt(false)} />
+    )}
+
     </ScreenWrapper>
   );
 };
