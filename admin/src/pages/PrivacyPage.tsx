@@ -59,7 +59,7 @@ const PrivacyPage = () => (
 
     <Section title="7. Контакты">
       По вопросам конфиденциальности свяжитесь с нами:<br />
-      <a href="mailto:rozievdovudbek2@gmail.com" style={{ color: '#2563EB' }}>rozievdovudbek2@gmail.com</a><br />
+      <a href="mailto:hlopokosh@gmail.com" style={{ color: '#2563EB' }}>hlopokosh@gmail.com</a><br />
       г. Ош, Памирская 2, Адыгене Соода борбору
     </Section>
 
