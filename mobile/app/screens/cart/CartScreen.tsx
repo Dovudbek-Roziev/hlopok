@@ -41,6 +41,7 @@ const CartScreen = () => {
   const subtotal = totalPrice();
 
   return (
+    <>
     <ScreenWrapper>
     <YStack flex={1} backgroundColor={Colors.bg}>
 
@@ -186,6 +187,7 @@ const CartScreen = () => {
         </YStack>
       </YStack>
     </Modal>
+    </>
   );
 };
 
