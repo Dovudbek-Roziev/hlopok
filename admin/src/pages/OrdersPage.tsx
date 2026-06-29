@@ -258,7 +258,7 @@ const OrdersPage = () => {
               <tbody>
                 {filtered.map((order: any) => (
                   <tr key={order._id} className="tr-hover tr-clickable" style={{ borderBottom: '1px solid #F3F4F6' }}
-                    onClick={() => openOrder(order)}>
+                    onClick={() => !['ready', 'cancelled'].includes(order.status) && openOrder(order)}>
                     <td style={{ padding: '13px 14px', color: '#1A1A1A', fontSize: 13, fontFamily: 'monospace', fontWeight: 700, cursor: 'pointer' }}>
                       {order.orderNumber}
                     </td>

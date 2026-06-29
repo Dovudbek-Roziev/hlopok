@@ -230,7 +230,7 @@ const DashboardPage = () => {
                 <Tooltip
                   cursor={{ fill: '#F3F4F6' }}
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13 }}
-                  formatter={(v: any) => [`${Number(v).toLocaleString()} ${t('common.som')}`, t('dashboard.todayRevenue')]}
+                  formatter={(v: any) => [`${Number(v).toLocaleString()} ${t('common.som')}`, t('dashboard.revenueChart')]}
                 />
                 <Bar dataKey="revenue" fill="#FFD700" radius={[6, 6, 0, 0]} />
               </BarChart>
