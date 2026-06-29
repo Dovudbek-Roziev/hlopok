@@ -452,8 +452,19 @@ const OrdersPage = () => {
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {isKy ? (item.name_ky || item.name_ru) : (item.name_ru || '—')}
                           </div>
-                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                            {sizeLabelBoth(item.size)}{item.color ? ` · ${item.color}` : ''} · {item.qty} {t('common.pcs')}
+                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                            <span>{sizeLabelBoth(item.size)}</span>
+                            {item.color && (
+                              <>
+                                <span>·</span>
+                                <span style={{
+                                  display: 'inline-block', width: 12, height: 12, borderRadius: '50%',
+                                  backgroundColor: item.color,
+                                  border: '1px solid rgba(0,0,0,0.15)', flexShrink: 0,
+                                }} />
+                              </>
+                            )}
+                            <span>· {item.qty} {t('common.pcs')}</span>
                           </div>
                         </div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', flexShrink: 0 }}>
