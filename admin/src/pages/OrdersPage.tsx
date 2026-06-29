@@ -311,13 +311,17 @@ const OrdersPage = () => {
                       {new Date(order.createdAt).toLocaleDateString(locale)}
                     </td>
                     <td style={{ padding: '13px 14px' }}>
-                      {!['ready', 'delivered', 'cancelled'].includes(order.status) && (
-                        <button onClick={e => { e.stopPropagation(); openOrder(order); }}
-                          style={{ padding: '6px 14px', backgroundColor: '#FFD700', border: 'none',
-                            borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap' }}>
-                          {t('orders.change')}
-                        </button>
-                      )}
+                      <button
+                        disabled={['ready', 'cancelled'].includes(order.status)}
+                        onClick={e => { e.stopPropagation(); openOrder(order); }}
+                        style={{ padding: '6px 14px', border: 'none',
+                          borderRadius: 8, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                          backgroundColor: ['ready', 'cancelled'].includes(order.status) ? '#E5E5E5' : '#FFD700',
+                          color: ['ready', 'cancelled'].includes(order.status) ? '#9E9E9E' : '#1A1A1A',
+                          cursor: ['ready', 'cancelled'].includes(order.status) ? 'not-allowed' : 'pointer',
+                        }}>
+                        {t('orders.change')}
+                      </button>
                     </td>
                   </tr>
                 ))}
