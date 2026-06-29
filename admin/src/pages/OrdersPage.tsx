@@ -519,8 +519,23 @@ const OrdersPage = () => {
                       ))}
                     </select>
                     {newStatus === 'cancelled' && (
-                      <input value={cancelReason} onChange={e => setCancelReason(e.target.value)}
-                        placeholder={t('orders.cancelReason')} style={inp} />
+                      <>
+                        {selected.paymentMethod === 'online' && selected.paymentStatus === 'confirmed' && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px',
+                            backgroundColor: '#FEF2F2', borderRadius: 10, border: '1.5px solid #FECACA', marginBottom: 10 }}>
+                            <CreditCard size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: 1 }} />
+                            <div style={{ fontSize: 13, color: '#DC2626', lineHeight: 1.5 }}>
+                              <strong>{isKy ? 'Онлайн төлөм!' : 'Онлайн оплата!'}</strong>
+                              <br />
+                              {isKy
+                                ? 'Бул буйрутма онлайн төлөнгөн. Жокко чыгаргандан кийин акчаны кол менен кайтарууну унутпаңыз.'
+                                : 'Этот заказ оплачен онлайн. После отмены не забудьте вернуть средства клиенту вручную.'}
+                            </div>
+                          </div>
+                        )}
+                        <input value={cancelReason} onChange={e => setCancelReason(e.target.value)}
+                          placeholder={t('orders.cancelReason')} style={inp} />
+                      </>
                     )}
                     <input value={comment} onChange={e => setComment(e.target.value)}
                       placeholder={t('orders.comment')} style={{ ...inp, marginBottom: 16 }} />

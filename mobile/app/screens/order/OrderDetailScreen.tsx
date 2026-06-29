@@ -4,7 +4,7 @@ import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, MapPin, CircleX, Star, Truck, Package, Check, Receipt, Share2, X } from 'lucide-react-native';
+import { ChevronLeft, MapPin, CircleX, Star, Truck, Package, Check, Receipt, Share2, X, CreditCard } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { ordersApi } from '../../api/orders';
 import { useColors } from '../../theme/useColors';
@@ -213,9 +213,10 @@ const OrderDetailScreen = () => {
   });
 
   const handleCancel = () => {
+    const isPaidOnline = order?.paymentMethod === 'online' && order?.paymentStatus === 'confirmed';
     Alert.alert(
       t('orders.cancelTitle'),
-      t('orders.cancelConfirm'),
+      isPaidOnline ? t('orders.cancelConfirmOnline') : t('orders.cancelConfirm'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -322,20 +323,31 @@ const OrderDetailScreen = () => {
 
         {/* Cancelled card */}
         {order.status === 'cancelled' && (
-          <XStack backgroundColor={Colors.redBg} borderRadius={12} padding={16} alignItems="flex-start" gap={12}>
-            <CircleX color={Colors.red} size={20} />
-            <YStack flex={1} gap={4}>
-              <Text fontWeight="700" color={Colors.red} fontSize={14}>{t('orders.cancelledTitle')}</Text>
-              {order.cancelReason ? (
-                <Text color={Colors.grayDark} fontSize={13}>{order.cancelReason}</Text>
-              ) : null}
-              {order.bonusUsed > 0 && (
-                <Text color={Colors.green} fontSize={13}>
-                  +{formatPrice(order.bonusUsed)} {t('orders.bonusRefunded')}
+          <YStack backgroundColor={Colors.redBg} borderRadius={12} padding={16} gap={10}>
+            <XStack alignItems="flex-start" gap={12}>
+              <CircleX color={Colors.red} size={20} />
+              <YStack flex={1} gap={4}>
+                <Text fontWeight="700" color={Colors.red} fontSize={14}>{t('orders.cancelledTitle')}</Text>
+                {order.cancelReason ? (
+                  <Text color={Colors.grayDark} fontSize={13}>{order.cancelReason}</Text>
+                ) : null}
+                {order.bonusUsed > 0 && (
+                  <Text color={Colors.green} fontSize={13}>
+                    +{formatPrice(order.bonusUsed)} {t('orders.bonusRefunded')}
+                  </Text>
+                )}
+              </YStack>
+            </XStack>
+            {order.paymentMethod === 'online' && order.paymentStatus === 'confirmed' && (
+              <XStack backgroundColor="rgba(255,255,255,0.6)" borderRadius={10} padding={12}
+                alignItems="flex-start" gap={10}>
+                <CreditCard color={Colors.red} size={18} style={{ marginTop: 1 }} />
+                <Text fontSize={13} color={Colors.red} flex={1} lineHeight={20}>
+                  {t('orders.cancelledRefundNote')}
                 </Text>
-              )}
-            </YStack>
-          </XStack>
+              </XStack>
+            )}
+          </YStack>
         )}
 
         {/* Delivery / Pickup */}
