@@ -7,6 +7,7 @@ import RatingModal from '../components/RatingModal';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '../theme/useColors';
 import { useCartStore } from '../store/cartStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
 import HomeScreen           from '../screens/home/HomeScreen';
@@ -97,6 +98,7 @@ const MainNavigator = () => {
   const { t } = useTranslation();
   const Colors = useColors();
   const totalItems = useCartStore(s => s.totalItems());
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -108,8 +110,8 @@ const MainNavigator = () => {
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 4,
         },
         tabBarLabelStyle: { fontSize: 11 },
       }}
