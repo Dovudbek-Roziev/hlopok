@@ -164,6 +164,9 @@ const ProductScreen = () => {
     setTimeout(() => setCartSuccess(false), 2000);
   };
 
+  const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
+  const isOutOfStock = variants.length > 0 && totalStock === 0;
+
   const avgRating  = reviewData?.avgRating || 0;
   const ratingCount = reviewData?.count || 0;
 
@@ -250,6 +253,22 @@ const ProductScreen = () => {
               </>
             )}
           </XStack>
+
+          {/* Out of stock banner */}
+          {isOutOfStock && (
+            <YStack backgroundColor="#FFF3F3" borderRadius={14} padding={14} gap={6}
+              borderLeftWidth={4} borderLeftColor={Colors.red}>
+              <XStack alignItems="center" gap={8}>
+                <Text fontSize={22}>😔</Text>
+                <Text fontSize={15} fontWeight="700" color={Colors.red}>
+                  {t('product.outOfStockTitle')}
+                </Text>
+              </XStack>
+              <Text fontSize={13} color="#B71C1C" lineHeight={20}>
+                {t('product.outOfStockDesc')}
+              </Text>
+            </YStack>
+          )}
 
           {/* Rating row */}
           <TouchableOpacity
@@ -396,11 +415,13 @@ const ProductScreen = () => {
           </YStack>
         )}
         <XStack gap={12} alignItems="center">
-          <TouchableOpacity onPress={handleAddToCart} style={{ flex: 1 }}>
-            <XStack backgroundColor={Colors.yellow} borderRadius={14} height={52}
-              alignItems="center" justifyContent="center" gap={8}>
-              <ShoppingCart color={Colors.black} size={18} />
-              <Text fontWeight="700" color={Colors.black} fontSize={15}>{t('product.addToCart')}</Text>
+          <TouchableOpacity onPress={handleAddToCart} disabled={isOutOfStock} style={{ flex: 1 }}>
+            <XStack backgroundColor={isOutOfStock ? Colors.grayLight : Colors.yellow}
+              borderRadius={14} height={52} alignItems="center" justifyContent="center" gap={8}>
+              <ShoppingCart color={isOutOfStock ? Colors.gray : Colors.black} size={18} />
+              <Text fontWeight="700" color={isOutOfStock ? Colors.gray : Colors.black} fontSize={15}>
+                {isOutOfStock ? t('product.outOfStockTitle') : t('product.addToCart')}
+              </Text>
             </XStack>
           </TouchableOpacity>
           <YStack alignItems="flex-end">
