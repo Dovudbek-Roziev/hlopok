@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { ShoppingCart, TrendingUp, TrendingDown, Users, AlertTriangle, Package, Trash2 } from 'lucide-react';
+import { ShoppingCart, TrendingUp, TrendingDown, Users, AlertTriangle, Package, Trash2, Gift, UserPlus, XCircle, Receipt } from 'lucide-react';
 import api from '../api/client';
 import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -23,16 +23,17 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: '#DC2626',
 };
 
-const StatCard = ({ icon: Icon, label, value, color }: any) => (
+const StatCard = ({ icon: Icon, label, value, color, hint }: any) => (
   <div className="card-hover stat-card" style={{ ...card, flex: 1, minWidth: 140 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
       <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: color + '18',
-        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Icon size={20} color={color} />
       </div>
-      <span style={{ color: '#6B7280', fontSize: 13 }}>{label}</span>
+      <span style={{ color: '#6B7280', fontSize: 13, lineHeight: 1.3 }}>{label}</span>
     </div>
-    <div style={{ fontSize: 26, fontWeight: 700, color: '#1A1A1A' }}>{value}</div>
+    <div style={{ fontSize: 24, fontWeight: 700, color: '#1A1A1A' }}>{value}</div>
+    {hint && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>{hint}</div>}
   </div>
 );
 
@@ -138,12 +139,48 @@ const DashboardPage = () => {
         </div>
       )}
 
-      {/* 4 stat cards */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <StatCard icon={ShoppingCart} label={t('dashboard.todayOrders')}  value={stats.todayOrders || 0}              color="#FFD700" />
+      {/* Qator 1: Asosiy ko'rsatkichlar */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }}>
+        <StatCard icon={ShoppingCart} label={t('dashboard.todayOrders')}  value={stats.todayOrders ?? 0}              color="#FFD700" />
         <StatCard icon={TrendingUp}   label={t('dashboard.todayRevenue')} value={`${(stats.todayRevenue || 0).toLocaleString()} ${t('common.som')}`} color="#16A34A" />
-        <StatCard icon={ShoppingCart} label={t('dashboard.totalOrders')}  value={stats.totalOrders || 0}              color="#2563EB" />
-        <StatCard icon={Users}        label={t('dashboard.pendingOrders')} value={stats.pendingOrders || 0}           color="#D97706" />
+        <StatCard icon={ShoppingCart} label={t('dashboard.totalOrders')}  value={stats.totalOrders ?? 0}              color="#2563EB" />
+        <StatCard icon={Users}        label={t('dashboard.pendingOrders')} value={stats.pendingOrders ?? 0}           color="#D97706" />
+      </div>
+
+      {/* Qator 2: Qo'shimcha ko'rsatkichlar */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: 12 }}>
+        <StatCard
+          icon={Gift}
+          label={t('dashboard.bonusIssued')}
+          value={`${(stats.bonusIssued || 0).toLocaleString()} ${t('common.som')}`}
+          color="#7C3AED"
+        />
+        <StatCard
+          icon={Receipt}
+          label={t('dashboard.bonusUsed')}
+          value={`${(stats.bonusUsed || 0).toLocaleString()} ${t('common.som')}`}
+          color="#0891B2"
+        />
+        <StatCard
+          icon={XCircle}
+          label={t('dashboard.cancelRate')}
+          value={`${stats.cancelRate ?? 0}%`}
+          color="#DC2626"
+          hint={t('dashboard.cancelRateHint')}
+        />
+        <StatCard
+          icon={TrendingUp}
+          label={t('dashboard.avgOrder')}
+          value={`${(stats.avgOrder || 0).toLocaleString()} ${t('common.som')}`}
+          color="#059669"
+        />
+        <StatCard
+          icon={UserPlus}
+          label={t('dashboard.newUsers')}
+          value={stats.newUsersThisMonth ?? 0}
+          color="#EA580C"
+          hint={t('dashboard.newUsersHint')}
+        />
       </div>
 
       {/* Monthly revenue + Top products */}

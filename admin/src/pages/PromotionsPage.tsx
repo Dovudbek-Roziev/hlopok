@@ -322,7 +322,7 @@ const PromoForm = ({ promo, onClose, onSaved }: any) => {
                             <div style={{ fontSize: 11, color: '#9E9E9E', marginTop: 1 }}>
                               {p?.price > 0 && `${p.price.toLocaleString()} ${t('common.som')} · `}
                               <span style={{ color: warehouseStock === 0 ? '#E53935' : '#2D8653', fontWeight: 600 }}>
-                                {t('promotions.totalStock', { count: warehouseStock })}
+                                {t('promotions.form.totalStock', { count: warehouseStock })}
                               </span>
                             </div>
                           </div>

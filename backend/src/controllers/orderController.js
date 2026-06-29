@@ -566,17 +566,22 @@ exports.getDashboardStats = async (req, res) => {
       todayOrders,
       todayRevenue,
       totalOrders,
+      cancelledCount,
       pendingOrders,
       thisMonthData,
       lastMonthData,
       topProducts,
+      bonusIssuedData,
+      bonusUsedData,
+      newUsersThisMonth,
     ] = await Promise.all([
-      Order.countDocuments({ createdAt: { $gte: today, $lt: tomorrow } }),
+      Order.countDocuments({ createdAt: { $gte: today, $lt: tomorrow }, status: { $ne: 'cancelled' } }),
       Order.aggregate([
         { $match: { createdAt: { $gte: today, $lt: tomorrow }, status: { $ne: 'cancelled' } } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
-      Order.countDocuments(),
+      Order.countDocuments({ status: { $ne: 'cancelled' } }),
+      Order.countDocuments({ status: 'cancelled' }),
       Order.countDocuments({ status: 'pending' }),
       Order.aggregate([
         { $match: { createdAt: { $gte: thisMonthStart }, status: { $ne: 'cancelled' } } },
@@ -590,6 +595,15 @@ exports.getDashboardStats = async (req, res) => {
         .sort({ totalSold: -1 })
         .limit(5)
         .select('name_ru name_ky images totalSold price'),
+      BonusTransaction.aggregate([
+        { $match: { type: { $in: ['earned', 'admin_add'] } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      BonusTransaction.aggregate([
+        { $match: { type: 'used' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      User.countDocuments({ createdAt: { $gte: thisMonthStart }, role: { $ne: 'admin' } }),
     ]);
 
     // Haftalik buyurtmalar / Weekly orders
@@ -625,18 +639,30 @@ exports.getDashboardStats = async (req, res) => {
       ]),
     ]);
 
-    const thisMonth = thisMonthData[0]?.total || 0;
-    const lastMonth = lastMonthData[0]?.total || 0;
-    const monthGrowth = lastMonth === 0
+    const thisMonth    = thisMonthData[0]?.total || 0;
+    const lastMonth    = lastMonthData[0]?.total || 0;
+    const monthGrowth  = lastMonth === 0
       ? (thisMonth > 0 ? 100 : 0)
       : Math.round(((thisMonth - lastMonth) / lastMonth) * 100);
+
+    const totalAll   = totalOrders + cancelledCount;
+    const cancelRate = totalAll === 0 ? 0 : Math.round((cancelledCount / totalAll) * 100);
+
+    // Jami daromad (barcha vaqt uchun o'rtacha chek) / All-time revenue for avg order value
+    const allTimeRevenueData = await Order.aggregate([
+      { $match: { status: { $ne: 'cancelled' } } },
+      { $group: { _id: null, total: { $sum: '$total' } } },
+    ]);
+    const avgOrder = totalOrders === 0 ? 0 : Math.round((allTimeRevenueData[0]?.total || 0) / totalOrders);
 
     res.json({
       success: true,
       stats: {
         todayOrders,
-        todayRevenue: todayRevenue[0]?.total || 0,
+        todayRevenue:    todayRevenue[0]?.total || 0,
         totalOrders,
+        cancelledCount,
+        cancelRate,
         pendingOrders,
         weeklyData,
         thisMonthRevenue: thisMonth,
@@ -645,6 +671,10 @@ exports.getDashboardStats = async (req, res) => {
         topProducts,
         monthlyData,
         statusCounts,
+        bonusIssued:     bonusIssuedData[0]?.total || 0,
+        bonusUsed:       bonusUsedData[0]?.total   || 0,
+        avgOrder,
+        newUsersThisMonth,
       },
     });
   } catch (error) {

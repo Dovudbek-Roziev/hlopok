@@ -51,7 +51,14 @@
     "clearConfirmYes": "Да, очистить",
     "clearConfirmNo": "Отмена",
     "clearingProgress": "Очищается...",
-    "clearSuccess": "Статистика очищена"
+    "clearSuccess": "Статистика очищена",
+    "bonusIssued": "Выдано бонусов",
+    "bonusUsed": "Использовано бонусов",
+    "cancelRate": "Отмена заказов",
+    "avgOrder": "Средний чек",
+    "newUsers": "Новых клиентов",
+    "newUsersHint": "за этот месяц",
+    "cancelRateHint": "от всех заказов"
   },
   "orders": {
     "title": "Заказы",

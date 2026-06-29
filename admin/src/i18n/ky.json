@@ -51,7 +51,14 @@
     "clearConfirmYes": "Ооба, тазалоо",
     "clearConfirmNo": "Жокко чыгаруу",
     "clearingProgress": "Тазаланууда...",
-    "clearSuccess": "Статистика тазаланды"
+    "clearSuccess": "Статистика тазаланды",
+    "bonusIssued": "Берилген бонустар",
+    "bonusUsed": "Колдонулган бонустар",
+    "cancelRate": "Жокко чыгаруу",
+    "avgOrder": "Орточо чек",
+    "newUsers": "Жаңы кардарлар",
+    "newUsersHint": "бул айда",
+    "cancelRateHint": "бардык буйрутмалардан"
   },
   "orders": {
     "title": "Буйрутмалар",
