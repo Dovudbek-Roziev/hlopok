@@ -16,7 +16,7 @@ const CartScreen = () => {
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
-  const { items, removeItem, updateQty, totalPrice } = useCartStore();
+  const { items, removeItem, updateQty, totalPrice, totalItems } = useCartStore();
   const { isAuthenticated, user } = useAuthStore();
   const lang = i18n.language === 'ky' ? 'ky' : 'ru';
 
@@ -50,7 +50,7 @@ const CartScreen = () => {
         <XStack justifyContent="space-between" alignItems="center">
           <Text fontSize={22} fontWeight="700" color={Colors.black}>{t('cart.title')}</Text>
           <YStack backgroundColor={Colors.white} borderWidth={1} borderColor={Colors.border} borderRadius={12} paddingHorizontal={12} paddingVertical={4}>
-            <Text fontWeight="700" color={Colors.black} fontSize={13}>{items.length} {t('common.pieces')}</Text>
+            <Text fontWeight="700" color={Colors.black} fontSize={13}>{totalItems()} {t('common.pieces')}</Text>
           </YStack>
         </XStack>
       </YStack>
@@ -97,7 +97,7 @@ const CartScreen = () => {
                 <TouchableOpacity
                   onPress={() => item.qty > 1
                     ? updateQty(item.productId, item.size, item.color, item.qty - 1)
-                    : removeItem(item.productId, item.size, item.color)}
+                    : setRemoveTarget({ productId: item.productId, size: item.size, color: item.color })}
                   style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.bg,
                     alignItems: 'center', justifyContent: 'center',
                     borderWidth: 1, borderColor: Colors.border }}>
@@ -120,7 +120,7 @@ const CartScreen = () => {
               {/* Summary */}
             <YStack backgroundColor={Colors.white} borderRadius={14} padding={16} gap={10}>
               <XStack justifyContent="space-between">
-                <Text color={Colors.grayDark} fontSize={14}>{t('checkout.subtotal')} ({items.length})</Text>
+                <Text color={Colors.grayDark} fontSize={14}>{t('checkout.subtotal')} ({totalItems()})</Text>
                 <Text color={Colors.black} fontSize={14}>{formatPrice(subtotal)}</Text>
               </XStack>
               <YStack height={1} backgroundColor={Colors.border} />

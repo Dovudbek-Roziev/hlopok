@@ -22,7 +22,7 @@ const CheckoutScreen = () => {
   const { t, i18n } = useTranslation();
   const isKy = i18n.language === 'ky';
   const navigation = useNavigation<any>();
-  const { items, totalPrice, clearCart } = useCartStore();
+  const { items, totalPrice, clearCart, totalItems } = useCartStore();
   const { user }   = useAuthStore();
   const STORE_INFO = useStoreInfo();
 
@@ -320,7 +320,7 @@ const CheckoutScreen = () => {
           {/* ── Summary ── */}
           <YStack backgroundColor={Colors.white} borderRadius={14} padding={16} gap={10}>
             <XStack justifyContent="space-between">
-              <Text color={Colors.grayDark} fontSize={14}>{t('checkout.subtotal')} ({items.length})</Text>
+              <Text color={Colors.grayDark} fontSize={14}>{t('checkout.subtotal')} ({totalItems()})</Text>
               <Text color={Colors.black} fontSize={14}>{formatPrice(subtotal)}</Text>
             </XStack>
             {bonusApply > 0 && (

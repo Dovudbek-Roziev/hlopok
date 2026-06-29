@@ -44,9 +44,9 @@ const BonusScreen = () => {
   const totalSaved   = user?.totalSaved   || 0;
 
   const howItWorks = [
-    { n: '1', text: lang === 'ky' ? `Буюртма берүү — кассабоңус ${bonusPct}% алынат` : `Делайте заказы — получайте ${bonusPct}% кэшбэк бонусами` },
-    { n: '2', text: lang === 'ky' ? 'QR кодду кассада кассирге көрсөтүңүз' : 'Покажите QR-код кассиру при оплате' },
-    { n: '3', text: lang === 'ky' ? 'Бонустарды кийинки буюртмада колдонуңуз' : 'Используйте бонусы при следующем заказе' },
+    { n: '1', text: t('bonus.step1', { pct: bonusPct }) },
+    { n: '2', text: t('bonus.step2') },
+    { n: '3', text: t('bonus.step3') },
   ];
 
   return (
@@ -144,7 +144,7 @@ const BonusScreen = () => {
                 {t('bonus.cashback')} {bonusPct}%
               </Text>
               <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>
-                {lang === 'ky' ? 'Үнөмдөлдү:' : 'Сэкономлено:'} {formatPrice(totalSaved)}
+                {t('bonus.savedAmount')} {formatPrice(totalSaved)}
               </Text>
             </View>
           </View>
@@ -157,7 +157,7 @@ const BonusScreen = () => {
             <Text color={Colors.gray} fontSize={11} fontWeight="600">{t('bonus.balance')}</Text>
             <Text color={Colors.green} fontSize={22} fontWeight="800">{formatPrice(balance)}</Text>
             <Text color={Colors.gray} fontSize={11}>
-              {lang === 'ky' ? 'Ар бир заказда' : 'С каждого заказа'} {bonusPct}%
+              {t('bonus.perOrder')} {bonusPct}%
             </Text>
           </YStack>
           <YStack flex={1} backgroundColor={Colors.white} borderRadius={16} padding={16} gap={4}
@@ -165,7 +165,7 @@ const BonusScreen = () => {
             <Text color={Colors.gray} fontSize={11} fontWeight="600">{t('bonus.totalSaved')}</Text>
             <Text color={Colors.yellow} fontSize={22} fontWeight="800">{formatPrice(totalSaved)}</Text>
             <Text color={Colors.gray} fontSize={11}>
-              {lang === 'ky' ? 'Жалпы үнөмдөлдү' : 'Всего сэкономлено'}
+              {t('bonus.totalSavedHint')}
             </Text>
           </YStack>
         </XStack>
@@ -178,7 +178,7 @@ const BonusScreen = () => {
             style={{ borderBottomWidth: 1, borderBottomColor: Colors.border }}>
             <Info color={Colors.yellow} size={18} />
             <Text fontSize={15} fontWeight="700" color={Colors.black}>
-              {lang === 'ky' ? 'Кантип иштейт?' : 'Как это работает?'}
+              {t('bonus.howItWorks')}
             </Text>
           </XStack>
           <YStack padding={16} gap={14}>

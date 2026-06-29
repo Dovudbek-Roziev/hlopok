@@ -330,7 +330,7 @@ const OrderDetailScreen = () => {
                 )}
               </YStack>
             </XStack>
-            {order.paymentMethod === 'online' && order.paymentStatus === 'confirmed' && (
+            {order.paymentMethod === 'online' && (
               <XStack backgroundColor="rgba(255,255,255,0.6)" borderRadius={10} padding={12}
                 alignItems="flex-start" gap={10}>
                 <CreditCard color={Colors.red} size={18} style={{ marginTop: 1 }} />
@@ -487,12 +487,12 @@ const OrderDetailScreen = () => {
             </YStack>
 
             {/* Online payment warning */}
-            {order.paymentMethod === 'online' && order.paymentStatus === 'confirmed' ? (
+            {order.paymentMethod === 'online' ? (
               <YStack backgroundColor={Colors.redBg} borderRadius={14} padding={16} gap={10}>
                 <XStack alignItems="center" gap={8}>
                   <CreditCard color={Colors.red} size={20} />
                   <Text fontSize={14} fontWeight="700" color={Colors.red}>
-                    {lang === 'ky' ? 'Онлайн төлөм' : 'Онлайн оплата'}
+                    {t('checkout.paymentOnlineHeader')}
                   </Text>
                 </XStack>
                 <Text fontSize={13} color={Colors.red} lineHeight={20}>
