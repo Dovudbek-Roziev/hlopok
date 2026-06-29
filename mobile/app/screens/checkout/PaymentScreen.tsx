@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Linking, ScrollView, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, TouchableOpacity, View, Image } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -310,27 +310,78 @@ const PaymentScreen = () => {
           )}
         </YStack>
 
-        {/* ── Банктарды тандоо ── */}
+        {/* ── QR Код ── */}
         <YStack gap={12}>
-          <YStack gap={4}>
-            <Text fontSize={15} fontWeight="800" color={Colors.black}>
-              {t('checkout.paymentChooseBank')}
-            </Text>
-            <Text fontSize={12} color={Colors.gray}>
-              {t('checkout.paymentTapHint')}
-            </Text>
-          </YStack>
+          <Text fontSize={15} fontWeight="800" color={Colors.black}>
+            {t('checkout.paymentChooseBank')}
+          </Text>
 
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <MbankLogo
-              label={tapLabel}
-              onPress={() => openBank(STORE_INFO.paymentLink, 'Mbank')}
-            />
-            <OBusinessLogo
-              label={tapLabel}
-              onPress={() => openBank(STORE_INFO.paymentLink2, 'O! Business')}
-            />
-          </View>
+          {/* QR kodlar — agar yuklangan bo'lsa ko'rsatish */}
+          {(STORE_INFO.paymentQR || STORE_INFO.paymentQR2) ? (
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              {/* Mbank QR */}
+              {STORE_INFO.paymentQR ? (
+                <TouchableOpacity
+                  onPress={() => openBank(STORE_INFO.paymentLink, 'Mbank')}
+                  activeOpacity={0.85}
+                  style={{ flex: 1, borderRadius: 16, overflow: 'hidden',
+                    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: '#007A3D' }}
+                >
+                  <View style={{ backgroundColor: '#007A3D', paddingVertical: 8, alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>Mbank ELQR</Text>
+                  </View>
+                  <View style={{ padding: 12, alignItems: 'center' }}>
+                    <Image
+                      source={{ uri: STORE_INFO.paymentQR }}
+                      style={{ width: 140, height: 140, borderRadius: 8 }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={{ backgroundColor: '#005C2E', paddingVertical: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{tapLabel}</Text>
+                    <ChevronRight color="#fff" size={12} />
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+
+              {/* O! Business QR */}
+              {STORE_INFO.paymentQR2 ? (
+                <TouchableOpacity
+                  onPress={() => openBank(STORE_INFO.paymentLink2, 'O! Business')}
+                  activeOpacity={0.85}
+                  style={{ flex: 1, borderRadius: 16, overflow: 'hidden',
+                    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: '#E91E8C' }}
+                >
+                  <View style={{ backgroundColor: '#111111', paddingVertical: 8, alignItems: 'center' }}>
+                    <Text style={{ color: '#E91E8C', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>O! Business</Text>
+                  </View>
+                  <View style={{ padding: 12, alignItems: 'center' }}>
+                    <Image
+                      source={{ uri: STORE_INFO.paymentQR2 }}
+                      style={{ width: 140, height: 140, borderRadius: 8 }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={{ backgroundColor: '#E91E8C', paddingVertical: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{tapLabel}</Text>
+                    <ChevronRight color="#fff" size={12} />
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : (
+            /* QR yo'q bo'lsa — eski bank tugmalari */
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <MbankLogo
+                label={tapLabel}
+                onPress={() => openBank(STORE_INFO.paymentLink, 'Mbank')}
+              />
+              <OBusinessLogo
+                label={tapLabel}
+                onPress={() => openBank(STORE_INFO.paymentLink2, 'O! Business')}
+              />
+            </View>
+          )}
         </YStack>
 
         {/* ── Сепаратор ── */}

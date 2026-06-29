@@ -164,8 +164,7 @@ const PromoForm = ({ promo, onClose, onSaved }: any) => {
   const selectedIds = Object.keys(selectedProducts);
 
   const addProduct = (p: any) => {
-    const stockTotal = (p.variants || []).reduce((a: number, v: any) => a + (v.stock || 0), 0);
-    setSelectedProducts(prev => ({ ...prev, [p._id]: stockTotal > 0 ? String(stockTotal) : '' }));
+    setSelectedProducts(prev => ({ ...prev, [p._id]: '' })); // limit yo'q — null
     setProductDetails(prev => ({ ...prev, [p._id]: p }));
   };
 
@@ -297,49 +296,72 @@ const PromoForm = ({ promo, onClose, onSaved }: any) => {
                   {selectedIds.map(id => {
                     const p = productDetails[id];
                     const warehouseStock = p ? (p.variants || []).reduce((a: number, v: any) => a + (v.stock || 0), 0) : 0;
+
+                    // Rang bo'yicha guruhlash
+                    const byColor: Record<string, { size: string; stock: number }[]> = {};
+                    (p?.variants || []).forEach((v: any) => {
+                      const c = v.color || '—';
+                      if (!byColor[c]) byColor[c] = [];
+                      byColor[c].push({ size: v.size, stock: v.stock || 0 });
+                    });
+
                     return (
                       <div key={id} style={{
-                        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                        backgroundColor: '#FAFAFA', borderRadius: 10, border: '1px solid #EEEEEE',
+                        padding: '10px 12px', backgroundColor: '#FAFAFA',
+                        borderRadius: 10, border: '1px solid #EEEEEE',
                       }}>
-                        {p?.images?.[0]
-                          ? <img src={p.images[0]} alt="" style={{ width: 38, height: 38, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />
-                          : <div style={{ width: 38, height: 38, borderRadius: 7, backgroundColor: '#E8E8E8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={15} color="#BDBDBD" /></div>
-                        }
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: '#1A1A1A', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {isKy ? (p?.name_ky || p?.name_ru || id) : (p?.name_ru || id)}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#9E9E9E', marginTop: 1 }}>
-                            {p?.price > 0 && `${p.price.toLocaleString()} ${t('common.som')} · `}
-                            <span style={{ color: warehouseStock === 0 ? '#E53935' : '#2D8653' }}>
-                              {t('promotions.form.pickerStock')}: {warehouseStock}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                          <div>
-                            <div style={{ color: '#9E9E9E', fontSize: 10, marginBottom: 3, textAlign: 'center' }}>{t('promotions.form.limitLabel')} (∞)</div>
-                            <input type="number" min={0} placeholder="∞"
-                              value={selectedProducts[id]}
-                              onChange={e => setSelectedProducts(prev => ({ ...prev, [id]: e.target.value }))}
-                              style={{ width: 68, padding: '6px 8px', backgroundColor: '#fff',
-                                border: '1.5px solid #E5E5E5', borderRadius: 6, fontSize: 13, textAlign: 'center',
-                                fontWeight: 600 }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {p?.images?.[0]
+                            ? <img src={p.images[0]} alt="" style={{ width: 38, height: 38, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />
+                            : <div style={{ width: 38, height: 38, borderRadius: 7, backgroundColor: '#E8E8E8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={15} color="#BDBDBD" /></div>
+                          }
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ color: '#1A1A1A', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {isKy ? (p?.name_ky || p?.name_ru || id) : (p?.name_ru || id)}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#9E9E9E', marginTop: 1 }}>
+                              {p?.price > 0 && `${p.price.toLocaleString()} ${t('common.som')} · `}
+                              <span style={{ color: warehouseStock === 0 ? '#E53935' : '#2D8653', fontWeight: 600 }}>
+                                Жами: {warehouseStock} та
+                              </span>
+                            </div>
                           </div>
                           <button onClick={() => removeProduct(id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BDBDBD', padding: 4, lineHeight: 1 }}>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#BDBDBD', padding: 4, lineHeight: 1, flexShrink: 0 }}>
                             <X size={15} />
                           </button>
                         </div>
+
+                        {/* Rang + razmer breakdown */}
+                        {Object.keys(byColor).length > 0 && (
+                          <div style={{ marginTop: 8, paddingLeft: 48, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {Object.entries(byColor).map(([color, sizes]) => (
+                              <div key={color} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                {color !== '—' && (
+                                  <span style={{
+                                    display: 'inline-block', width: 12, height: 12, borderRadius: '50%',
+                                    backgroundColor: color, border: '1px solid rgba(0,0,0,0.15)', flexShrink: 0,
+                                  }} />
+                                )}
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                  {(sizes as { size: string; stock: number }[]).map(s => (
+                                    <span key={s.size} style={{
+                                      fontSize: 10, padding: '2px 7px', borderRadius: 6, fontWeight: 600,
+                                      backgroundColor: s.stock === 0 ? '#FFF0F0' : '#E8F5E9',
+                                      color: s.stock === 0 ? '#E53935' : '#2D8653',
+                                    }}>
+                                      {s.size}: {s.stock}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-              )}
-              <p style={{ color: '#BDBDBD', fontSize: 11, margin: '5px 0 0', lineHeight: 1.4 }}>
-                {t('promotions.form.limitHint')}
-              </p>
             </div>
 
             {/* Aktiv + tugmalar */}
