@@ -222,6 +222,11 @@ const OrdersPage = () => {
                       backgroundColor: '#DCFCE7', color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                       <Check size={11} />{t('orders.paymentConfirmed')}
                     </span>
+                  ) : order.status === 'cancelled' ? (
+                    <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                      backgroundColor: '#FEE2E2', color: '#991B1B' }}>
+                      {t('orders.statuses.cancelled')}
+                    </span>
                   ) : (
                     <button onClick={e => { e.stopPropagation(); confirmPayment.mutate(order._id); }}
                       style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
@@ -286,6 +291,11 @@ const OrdersPage = () => {
                           <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
                             backgroundColor: '#DCFCE7', color: '#15803D', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                             <Check size={11} />{t('orders.paymentConfirmed')}
+                          </span>
+                        ) : order.status === 'cancelled' ? (
+                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                            backgroundColor: '#FEE2E2', color: '#991B1B', whiteSpace: 'nowrap' }}>
+                            {t('orders.statuses.cancelled')}
                           </span>
                         ) : (
                           <button onClick={() => confirmPayment.mutate(order._id)}
