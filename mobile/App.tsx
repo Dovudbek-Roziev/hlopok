@@ -23,7 +23,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const navigationRef    = useRef<any>(null);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     SplashScreen.hideAsync();
@@ -33,7 +33,8 @@ export default function App() {
     if (!isAuthenticated) return;
 
     const register = async () => {
-      const token = await registerForPushNotifications();
+      const lang = user?.language || 'ru';
+      const token = await registerForPushNotifications(lang);
       if (token) await savePushTokenToServer(token);
     };
     register();

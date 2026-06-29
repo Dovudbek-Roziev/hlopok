@@ -1,12 +1,35 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, Alert, Linking } from 'react-native';
 import api from '../api/client';
 
 const isExpoGo =
   Constants.appOwnership === 'expo' ||
   Constants.executionEnvironment === 'storeClient';
 
-export const registerForPushNotifications = async (): Promise<string | null> => {
+const TEXTS = {
+  ru: {
+    title: 'Разрешите уведомления',
+    message: 'Включите уведомления, чтобы получать информацию о заказах и акциях.',
+    settings: 'Открыть настройки',
+    cancel: 'Позже',
+  },
+  ky: {
+    title: 'Билдирүүлөргө уруксат бериңиз',
+    message: 'Буйрутмалар жана акциялар жөнүндө билдирүү алуу үчүн билдирүүлөрдү жандырыңыз.',
+    settings: 'Жөндөөлөрдү ачуу',
+    cancel: 'Кийинчерээк',
+  },
+};
+
+const showSettingsAlert = (lang: string) => {
+  const t = TEXTS[lang as keyof typeof TEXTS] || TEXTS.ru;
+  Alert.alert(t.title, t.message, [
+    { text: t.cancel, style: 'cancel' },
+    { text: t.settings, onPress: () => Linking.openSettings() },
+  ]);
+};
+
+export const registerForPushNotifications = async (lang = 'ru'): Promise<string | null> => {
   if (isExpoGo) return null;
 
   try {
@@ -22,15 +45,21 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
       }),
     });
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
 
-    if (existingStatus !== 'granted') {
+    if (existingStatus === 'granted') {
+      // Ruxsat bor — token olish
+    } else if (canAskAgain) {
       const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+      if (status !== 'granted') {
+        showSettingsAlert(lang);
+        return null;
+      }
+    } else {
+      // Doimiy rad etilgan — sozlamalarga yo'naltir
+      showSettingsAlert(lang);
+      return null;
     }
-
-    if (finalStatus !== 'granted') return null;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('orders', {
