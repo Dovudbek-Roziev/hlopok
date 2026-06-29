@@ -54,12 +54,10 @@ export default function App() {
         queryClient.invalidateQueries({ queryKey: ['my-orders'] });
       },
       (orderId) => {
-        if (navigationRef.current) {
-          navigationRef.current.navigate('OrdersTab');
-          setTimeout(() => {
-            navigationRef.current?.navigate('OrderDetail', { id: orderId });
-          }, 300);
-        }
+        navigationRef.current?.navigate('OrdersTab');
+        setTimeout(() => {
+          navigationRef.current?.navigate('OrderDetail', { id: orderId });
+        }, 400);
       },
     );
 
