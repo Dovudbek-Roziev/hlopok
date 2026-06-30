@@ -240,11 +240,10 @@
     "paymentPendingSubtitle": "Оплатите заказ для подтверждения",
     "paymentChooseBank": "Выберите банк для оплаты",
     "paymentTapHint": "Нажмите на банк — приложение откроется автоматически",
-    "paymentLinkNotSet": "Ссылка на оплату не настроена",
+    "paymentLinkNotSet": "Ссылка не настроена. Обратитесь к продавцу.",
     "whatsappNotFound": "WhatsApp не установлен на устройстве",
     "paymentAfterPay": "После оплаты отправьте нам чек:",
     "paymentSendWhatsApp": "Отправить чек в WhatsApp",
-    "paymentLinkNotSet": "Ссылка не настроена. Обратитесь к продавцу.",
     "paymentReceiptMsg": "Привет! Оплатил(а) заказ #{{number}} на сумму {{amount}} сом.\n\nСостав заказа:\n{{items}}\n\nХлопок"
   },
   "orders": {

@@ -101,7 +101,7 @@ const CategoryScreen = () => {
               )}
               {item.isBestseller && (
                 <YStack position="absolute" top={8} right={8} backgroundColor={Colors.yellow} borderRadius={6} paddingHorizontal={6} paddingVertical={2}>
-                  <Text color={Colors.black} fontSize={10} fontWeight="700">TOP</Text>
+                  <Text color={Colors.black} fontSize={10} fontWeight="700">{t('product.isBestseller')}</Text>
                 </YStack>
               )}
               <YStack padding={10} gap={4}>

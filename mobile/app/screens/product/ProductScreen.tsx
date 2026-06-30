@@ -165,7 +165,7 @@ const ProductScreen = () => {
   };
 
   const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
-  const isOutOfStock = variants.length > 0 && totalStock === 0;
+  const isOutOfStock = variants.length === 0 || totalStock === 0;
 
   const avgRating  = reviewData?.avgRating || 0;
   const ratingCount = reviewData?.count || 0;

@@ -64,11 +64,11 @@ const ForgotPasswordScreen = () => {
 
   const verifyAndReset = async () => {
     if (code.length !== 4) {
-      setError(t('auth.forgotCodePlaceholder'));
+      setError(t('auth.otpInvalid'));
       return;
     }
     if (newPwd.length < 6) {
-      setError(t('auth.forgotNewPasswordPlaceholder'));
+      setError(t('auth.passwordTooShort'));
       return;
     }
     setError('');

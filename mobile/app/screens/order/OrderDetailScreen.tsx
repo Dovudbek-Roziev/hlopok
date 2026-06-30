@@ -91,7 +91,7 @@ const ReceiptModal = ({ order, onClose }: { order: any; onClose: () => void }) =
             {/* Order info */}
             <YStack gap={6} marginBottom={16}>
               <XStack justifyContent="space-between">
-                <Text fontSize={13} color={Colors.gray}>{t('orders.ordersTitle') || 'Буйрутма'}</Text>
+                <Text fontSize={13} color={Colors.gray}>{t('checkout.orderNumber')}</Text>
                 <Text fontSize={13} fontWeight="600" color={Colors.black}>{order.orderNumber}</Text>
               </XStack>
               <XStack justifyContent="space-between">
