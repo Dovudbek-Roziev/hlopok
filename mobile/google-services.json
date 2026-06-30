@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "820827536980",
+    "project_id": "hlopok-ee6f0",
+    "storage_bucket": "hlopok-ee6f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:820827536980:android:e52ee2fd0b0ae3a718b7c1",
+        "android_client_info": {
+          "package_name": "kg.osh.hlopok"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCERnNC7LBDqQ3MCXxCktYgzotzimAn4S4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
