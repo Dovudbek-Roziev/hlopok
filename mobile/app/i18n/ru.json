@@ -195,6 +195,8 @@
     "orderSuccess": "Заказ оформлен!",
     "orderNumber": "Номер заказа",
     "thankYou": "Спасибо за заказ! Мы скоро свяжемся с вами.",
+    "successInfoTitle": "Информация о заказе",
+    "successInfoBody": "Следите за статусом заказа в разделе «Мои заказы». Если возникнут вопросы — напишите нам в WhatsApp или Telegram.",
     "methodPickup": "Самовывоз",
     "methodDelivery": "Доставка",
     "deliveryLabel": "Доставка",

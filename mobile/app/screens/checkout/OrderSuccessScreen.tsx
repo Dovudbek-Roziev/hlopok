@@ -1,43 +1,24 @@
 import React from 'react';
-import { TouchableOpacity, Linking } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
-import { CircleCheck, Package, House, MessageCircle, Send, Truck, CreditCard } from 'lucide-react-native';
+import { CircleCheck, Package, House, Info } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useColors } from '../../theme/useColors';
-import { formatPrice } from '../../utils/format';
-import { useStoreInfo } from '../../utils/useStoreInfo';
 
 const OrderSuccessScreen = () => {
   const Colors     = useColors();
   const { t }      = useTranslation();
   const navigation = useNavigation<any>();
   const route      = useRoute<any>();
-  const STORE_INFO = useStoreInfo();
 
-  const {
-    orderNumber   = '',
-    paymentMethod = 'cash',
-    total         = 0,
-    deliveryType  = 'pickup',
-    deliveryAddress = '',
-  } = route.params || {};
-
-  const isOnline   = paymentMethod === 'online';
-  const isDelivery = deliveryType === 'delivery';
+  const { orderNumber = '' } = route.params || {};
 
   const resetAndGo = (tabName: string) => {
     navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Cart' }] }));
     navigation.getParent()?.navigate(tabName);
   };
-
-  const waPayMsg = encodeURIComponent(
-    t('checkout.paymentWhatsAppMsg', { number: orderNumber, amount: formatPrice(total) })
-  );
-  const waDelivMsg = encodeURIComponent(
-    t('checkout.deliveryWhatsAppMsg', { number: orderNumber, address: deliveryAddress })
-  );
 
   return (
     <ScreenWrapper>
@@ -74,69 +55,17 @@ const OrderSuccessScreen = () => {
           </Text>
         </YStack>
 
-        {/* Online payment notice */}
-        {isOnline && (
-          <YStack backgroundColor={Colors.blueBg} borderRadius={14} padding={16} gap={12} width="100%"
-            style={{ borderWidth: 1, borderColor: Colors.blueBorder }}>
-            <XStack alignItems="center" gap={10}>
-              <CreditCard color={Colors.blue} size={20} />
-              <Text fontSize={14} fontWeight="700" color={Colors.blue} flex={1}>
-                {t('checkout.paymentOnlineHeader')}
-              </Text>
-            </XStack>
-            <Text fontSize={13} color={Colors.grayDark} lineHeight={18}>
-              {t('checkout.paymentOnlineHint')}
-            </Text>
-            <XStack gap={10}>
-              <TouchableOpacity
-                onPress={() => Linking.openURL(`${STORE_INFO.whatsapp}?text=${waPayMsg}`).catch(() => {})}
-                style={{ flex: 1, backgroundColor: '#25D366', borderRadius: 12, height: 46,
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <MessageCircle color="#fff" size={16} />
-                <Text color="#fff" fontWeight="700" fontSize={13}>{t('checkout.payNowWhatsApp')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => Linking.openURL(STORE_INFO.telegram).catch(() => {})}
-                style={{ flex: 1, backgroundColor: '#229ED9', borderRadius: 12, height: 46,
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Send color="#fff" size={14} />
-                <Text color="#fff" fontWeight="700" fontSize={13}>Telegram</Text>
-              </TouchableOpacity>
-            </XStack>
-          </YStack>
-        )}
-
-        {/* Delivery notice */}
-        {isDelivery && (
-          <YStack backgroundColor={Colors.blueBg} borderRadius={14} padding={16} gap={12} width="100%"
-            style={{ borderWidth: 1, borderColor: Colors.blueBorder }}>
-            <XStack alignItems="center" gap={10}>
-              <Truck color={Colors.blue} size={20} />
-              <Text fontSize={14} fontWeight="700" color={Colors.blue} flex={1}>
-                {t('checkout.deliverySuccessTitle')}
-              </Text>
-            </XStack>
-            <Text fontSize={13} color={Colors.grayDark} lineHeight={18}>
-              {t('checkout.deliverySuccessMsg')}
-            </Text>
-            <XStack gap={10}>
-              <TouchableOpacity
-                onPress={() => Linking.openURL(`${STORE_INFO.whatsapp}?text=${waDelivMsg}`).catch(() => {})}
-                style={{ flex: 1, backgroundColor: '#25D366', borderRadius: 12, height: 46,
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <MessageCircle color="#fff" size={16} />
-                <Text color="#fff" fontWeight="700" fontSize={13}>{t('checkout.sendReceiptWhatsApp')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => Linking.openURL(STORE_INFO.telegram).catch(() => {})}
-                style={{ flex: 1, backgroundColor: '#229ED9', borderRadius: 12, height: 46,
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Send color="#fff" size={14} />
-                <Text color="#fff" fontWeight="700" fontSize={13}>Telegram</Text>
-              </TouchableOpacity>
-            </XStack>
-          </YStack>
-        )}
+        {/* Info card */}
+        <YStack backgroundColor={Colors.blueBg} borderRadius={14} padding={16} gap={10} width="100%"
+          style={{ borderWidth: 1, borderColor: Colors.blueBorder }}>
+          <XStack alignItems="center" gap={8}>
+            <Info color={Colors.blue} size={18} />
+            <Text fontSize={13} fontWeight="700" color={Colors.blue}>{t('checkout.successInfoTitle')}</Text>
+          </XStack>
+          <Text fontSize={13} color={Colors.grayDark} lineHeight={20}>
+            {t('checkout.successInfoBody')}
+          </Text>
+        </YStack>
 
       </YStack>
 
