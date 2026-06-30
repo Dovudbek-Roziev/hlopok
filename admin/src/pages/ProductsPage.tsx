@@ -247,7 +247,7 @@ const ProductsPage = () => {
 
   const filtered = (products || []).filter((p: any) => {
     const matchSearch = !search ||
-      p.name_ru.toLowerCase().includes(search.toLowerCase()) ||
+      (p.name_ru || '').toLowerCase().includes(search.toLowerCase()) ||
       p.name_ky?.toLowerCase().includes(search.toLowerCase());
     const matchCat = !catFilter || p.category?._id === catFilter;
     return matchSearch && matchCat;

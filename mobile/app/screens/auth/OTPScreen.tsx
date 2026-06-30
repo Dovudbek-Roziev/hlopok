@@ -103,7 +103,7 @@ const OTPScreen = () => {
   const codeComplete = digits.every(d => d !== '');
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScreenWrapper>
       <StatusBar barStyle="dark-content" backgroundColor="#FFD700" />
 

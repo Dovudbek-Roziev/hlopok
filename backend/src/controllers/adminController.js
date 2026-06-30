@@ -85,7 +85,7 @@ exports.pushBroadcast = async (req, res) => {
     const BATCH = 100;
     let sent = 0;
     const messages = users
-      .filter(u => u.pushToken?.startsWith('ExponentPushToken'))
+      .filter(u => u.pushToken?.startsWith('ExponentPushToken') || u.pushToken?.startsWith('ExpoPushToken'))
       .map(u => {
         const isKy = u.language === 'ky';
         return { to: u.pushToken, title: isKy ? title_ky : title_ru, body: isKy ? body_ky : body_ru, data: { screen: 'HomeTab' }, sound: 'default', priority: 'high' };

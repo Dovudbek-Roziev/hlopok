@@ -537,6 +537,18 @@ exports.clearOrders = async (req, res) => {
 
 exports.clearAllStats = async (req, res) => {
   try {
+    // Stock qaytarish: bekor qilinmagan buyurtmalardan sotilgan miqdorni qaytaramiz
+    const activeOrders = await Order.find({ status: { $ne: 'cancelled' } });
+    for (const order of activeOrders) {
+      for (const item of order.items) {
+        await Product.updateOne(
+          { _id: item.product, 'variants.size': item.size, 'variants.color': item.color ?? '' },
+          { $inc: { 'variants.$[v].stock': item.qty, totalSold: -item.qty } },
+          { arrayFilters: [{ 'v.size': item.size, 'v.color': item.color ?? '' }] }
+        );
+      }
+    }
+
     await Order.deleteMany({});
     await BonusTransaction.deleteMany({});
 
@@ -600,8 +612,8 @@ exports.getDashboardStats = async (req, res) => {
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
       BonusTransaction.aggregate([
-        { $match: { type: 'used' } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
+        { $match: { type: { $in: ['used', 'refund'] } } },
+        { $group: { _id: null, total: { $sum: { $cond: [{ $eq: ['$type', 'used'] }, '$amount', { $multiply: ['$amount', -1] }] } } } },
       ]),
       User.countDocuments({ createdAt: { $gte: thisMonthStart }, role: { $ne: 'admin' } }),
     ]);

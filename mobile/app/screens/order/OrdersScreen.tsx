@@ -36,7 +36,7 @@ const OrdersScreen = () => {
   const orders = statusFilter ? allOrders.filter((o: any) => o.status === statusFilter) : allOrders;
 
   if (isLoading) {
-    return <YStack flex={1} alignItems="center" justifyContent="center"><Spinner color={Colors.yellow} size="large" /></YStack>;
+    return <ScreenWrapper><YStack flex={1} alignItems="center" justifyContent="center"><Spinner color={Colors.yellow} size="large" /></YStack></ScreenWrapper>;
   }
 
   if (isError) {

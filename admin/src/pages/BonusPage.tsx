@@ -99,8 +99,9 @@ const BonusPage = () => {
   const transactions  = txData?.transactions || [];
   const users         = usersData || [];
 
-  const totalGiven = transactions.filter((tx: any) => tx.type === 'earned' || tx.type === 'admin_add' || tx.type === 'refund').reduce((s: number, tx: any) => s + tx.amount, 0);
-  const totalUsed  = transactions.filter((tx: any) => tx.type === 'used').reduce((s: number, tx: any) => s + tx.amount, 0);
+  const totalGiven = transactions.filter((tx: any) => tx.type === 'earned' || tx.type === 'admin_add').reduce((s: number, tx: any) => s + tx.amount, 0);
+  const totalRefunded = transactions.filter((tx: any) => tx.type === 'refund').reduce((s: number, tx: any) => s + tx.amount, 0);
+  const totalUsed  = Math.max(0, transactions.filter((tx: any) => tx.type === 'used').reduce((s: number, tx: any) => s + tx.amount, 0) - totalRefunded);
   const usersWithBonus = new Set(transactions.map((tx: any) => tx.user?._id)).size;
 
   const filteredUsers = users.filter((u: any) => {
@@ -144,8 +145,8 @@ const BonusPage = () => {
       {/* ── Stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 14 }}>
         {[
-          { icon: Gift,      color: '#16A34A', bg: '#DCFCE7', label: t('bonus.totalGiven'), value: `${totalGiven.toLocaleString()} сом` },
-          { icon: Wallet,    color: '#DC2626', bg: '#FEE2E2', label: t('bonus.totalUsed'),  value: `${totalUsed.toLocaleString()} сом` },
+          { icon: Gift,      color: '#16A34A', bg: '#DCFCE7', label: t('bonus.totalGiven'), value: `${totalGiven.toLocaleString()} ${t('common.som')}` },
+          { icon: Wallet,    color: '#DC2626', bg: '#FEE2E2', label: t('bonus.totalUsed'),  value: `${totalUsed.toLocaleString()} ${t('common.som')}` },
           { icon: Users,     color: '#2563EB', bg: '#DBEAFE', label: t('bonus.activeUsers'),value: `${usersWithBonus}` },
         ].map(({ icon: Icon, color, bg, label, value }) => (
           <div key={label} className="card-hover stat-card" style={{ backgroundColor: '#fff', borderRadius: 14, padding: '18px 20px',
@@ -241,7 +242,7 @@ const BonusPage = () => {
                     </td>
                     <td style={{ padding: '13px 16px' }}>
                       <span style={{ fontWeight: 700, fontSize: 15, color: isNeg ? '#DC2626' : '#16A34A' }}>
-                        {isNeg ? '−' : '+'}{tx.amount.toLocaleString()} сом
+                        {isNeg ? '−' : '+'}{(tx.amount || 0).toLocaleString()} {t('common.som')}
                       </span>
                     </td>
                     <td style={{ padding: '13px 16px', color: '#6B7280', fontSize: 13 }}>
@@ -343,7 +344,7 @@ const BonusPage = () => {
                   <input type="number" style={{ ...inp, paddingRight: 50 }} value={amount}
                     onChange={e => setAmount(e.target.value)} placeholder="0" />
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-                    color: '#9CA3AF', fontSize: 13, fontWeight: 600 }}>сом</span>
+                    color: '#9CA3AF', fontSize: 13, fontWeight: 600 }}>{t('common.som')}</span>
                 </div>
               </div>
 

@@ -258,7 +258,7 @@ const OrdersPage = () => {
               <tbody>
                 {filtered.map((order: any) => (
                   <tr key={order._id} className="tr-hover tr-clickable" style={{ borderBottom: '1px solid #F3F4F6' }}
-                    onClick={() => !['ready', 'cancelled'].includes(order.status) && openOrder(order)}>
+                    onClick={() => openOrder(order)}>
                     <td style={{ padding: '13px 14px', color: '#1A1A1A', fontSize: 13, fontFamily: 'monospace', fontWeight: 700, cursor: 'pointer' }}>
                       {order.orderNumber}
                     </td>
@@ -530,7 +530,7 @@ const OrdersPage = () => {
                     </select>
                     {newStatus === 'cancelled' && (
                       <>
-                        {selected.paymentMethod === 'online' && selected.paymentStatus === 'confirmed' && (
+                        {selected.paymentMethod === 'online' && selected.paymentConfirmed === true && (
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px',
                             backgroundColor: '#FEF2F2', borderRadius: 10, border: '1.5px solid #FECACA', marginBottom: 10 }}>
                             <CreditCard size={16} color="#DC2626" style={{ flexShrink: 0, marginTop: 1 }} />

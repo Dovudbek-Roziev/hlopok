@@ -90,7 +90,7 @@ const InventoryPage = () => {
 
   const filtered = (products || []).filter((p: any) => {
     const q = search.toLowerCase();
-    return p.name_ru.toLowerCase().includes(q) || (p.name_ky || '').toLowerCase().includes(q);
+    return (p.name_ru || '').toLowerCase().includes(q) || (p.name_ky || '').toLowerCase().includes(q);
   });
 
   return (

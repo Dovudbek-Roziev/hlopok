@@ -300,7 +300,7 @@ const SettingsPage = () => {
                   {storeForm.paymentQR && (
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <img src={storeForm.paymentQR} alt="QR" style={{ width: 90, height: 90, borderRadius: 8, border: '1.5px solid #E5E5E5', objectFit: 'contain', backgroundColor: '#fff' }} />
-                      <button onClick={() => { setStoreForm(f => ({ ...f, paymentQR: '' })); updateStore.mutate({ ...storeForm, paymentQR: '' }); }}
+                      <button onClick={() => setStoreForm(f => { const next = { ...f, paymentQR: '' }; updateStore.mutate(next); return next; })}
                         style={{ position: 'absolute', top: -8, right: -8, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#E53935', border: 'none', color: '#fff', fontSize: 12, lineHeight: '20px', textAlign: 'center', cursor: 'pointer', fontWeight: 700 }}>×</button>
                     </div>
                   )}
@@ -348,7 +348,7 @@ const SettingsPage = () => {
                   {storeForm.paymentQR2 && (
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <img src={storeForm.paymentQR2} alt="QR2" style={{ width: 90, height: 90, borderRadius: 8, border: '1.5px solid #E5E5E5', objectFit: 'contain', backgroundColor: '#fff' }} />
-                      <button onClick={() => { setStoreForm(f => ({ ...f, paymentQR2: '' })); updateStore.mutate({ ...storeForm, paymentQR2: '' }); }}
+                      <button onClick={() => setStoreForm(f => { const next = { ...f, paymentQR2: '' }; updateStore.mutate(next); return next; })}
                         style={{ position: 'absolute', top: -8, right: -8, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#E53935', border: 'none', color: '#fff', fontSize: 12, lineHeight: '20px', textAlign: 'center', cursor: 'pointer', fontWeight: 700 }}>×</button>
                     </div>
                   )}

@@ -160,6 +160,7 @@ const PaymentScreen = () => {
   } = route.params || {};
 
   const [whatsappSent, setWhatsappSent] = useState(false);
+  const [linkError, setLinkError] = useState('');
 
   // WhatsApp чек билдирүү
   const buildReceipt = () => {
@@ -203,8 +204,6 @@ const PaymentScreen = () => {
       items,
     });
   };
-
-  const [linkError, setLinkError] = useState('');
 
   const openBank = async (link: string) => {
     if (!link) return;

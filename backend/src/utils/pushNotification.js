@@ -2,7 +2,7 @@
 // Expo Push Notification helper — https://exp.host/--/api/v2/push/send
 
 const sendPushNotification = async ({ token, title, body, data = {} }) => {
-  if (!token || !token.startsWith('ExponentPushToken')) return;
+  if (!token || (!token.startsWith('ExponentPushToken') && !token.startsWith('ExpoPushToken'))) return;
   try {
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',

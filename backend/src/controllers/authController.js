@@ -403,8 +403,8 @@ exports.resetPasswordByOTP = async (req, res) => {
     if (!clean || !code || !newPassword) {
       return res.status(400).json({ success: false, message: msg(req, 'Заполните все поля', 'Бардык талааларды толтуруңуз') });
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: msg(req, 'Пароль не менее 6 символов', 'Сырсөз кеминде 6 белги') });
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: msg(req, 'Пароль не менее 8 символов', 'Сырсөз кеминде 8 белги') });
     }
 
     const otp = await OTP.findOne({ phone: `reset_${clean}`, used: false, expiresAt: { $gt: new Date() } }).sort({ createdAt: -1 });

@@ -231,7 +231,7 @@ exports.getLowStockProducts = async (req, res) => {
     const threshold = Number(req.query.threshold) || 3;
     const products = await Product.find({
       isActive: true,
-      'variants.stock': { $lt: threshold, $gte: 0 },
+      variants: { $elemMatch: { stock: { $lt: threshold, $gte: 0 } } },
     }).populate('category', 'name_ru');
 
     res.json({ success: true, products });
