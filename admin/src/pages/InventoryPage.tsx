@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Search, X, Plus, Minus, Check } from 'lucide-react';
+import { Search, X, Plus, Minus, Check } from 'lucide-react';
 import api from '../api/client';
 import { toast } from '../components/Toast';
 import { PRESET_COLORS, colorName } from '../utils/colors';
@@ -123,7 +123,6 @@ const InventoryPage = () => {
           <tbody>
             {filtered.map((p: any) => {
               const stock = totalStock(p);
-              const low   = stock > 0 && stock < 5;
               return (
                 <tr key={p._id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.12s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F9FAFB')}
@@ -145,15 +144,14 @@ const InventoryPage = () => {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {low && <AlertTriangle size={14} color="#D97706" />}
-                      <span style={{ color: stock === 0 ? '#DC2626' : low ? '#D97706' : '#1A1A1A', fontWeight: 700, fontSize: 15 }}>{stock}</span>
+                      <span style={{ color: stock === 0 ? '#DC2626' : '#1A1A1A', fontWeight: 700, fontSize: 15 }}>{stock}</span>
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                      backgroundColor: stock === 0 ? '#FEE2E2' : low ? '#FEF9C3' : '#DCFCE7',
-                      color: stock === 0 ? '#DC2626' : low ? '#92400E' : '#15803D' }}>
-                      {stock === 0 ? t('inventory.outOfStock') : low ? t('inventory.low') : t('inventory.inStock')}
+                      backgroundColor: stock === 0 ? '#FEE2E2' : '#DCFCE7',
+                      color: stock === 0 ? '#DC2626' : '#15803D' }}>
+                      {stock === 0 ? t('inventory.outOfStock') : t('inventory.inStock')}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
