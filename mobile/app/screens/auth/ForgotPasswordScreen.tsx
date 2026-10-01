@@ -3,7 +3,7 @@ import { TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import { ChevronLeft, Lock, Phone, KeyRound, CircleCheck } from 'lucide-react-native';
+import { ChevronLeft, Lock, Phone, KeyRound, CircleCheck, MessageSquare, MessageCircle } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useColors } from '../../theme/useColors';
 import { API_URL } from '../../utils/config';
@@ -12,7 +12,7 @@ type Step = 'phone' | 'code' | 'password' | 'success';
 
 const ForgotPasswordScreen = () => {
   const Colors     = useColors();
-  const { t }      = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
 
   const [step, setStep]         = useState<Step>('phone');
@@ -22,6 +22,8 @@ const ForgotPasswordScreen = () => {
   const [loading, setLoading]   = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [error, setError]       = useState('');
+  // SMS yoki WHATSAPP kanal tanlash
+  const [otpType, setOtpType]   = useState<'SMS' | 'WHATSAPP'>('SMS');
 
   const inp = {
     height: 52, borderRadius: 12, paddingHorizontal: 16,
@@ -46,10 +48,11 @@ const ForgotPasswordScreen = () => {
     setError('');
     setLoading(true);
     try {
+      const lang = (i18n.language === 'ky' ? 'ky' : 'ru') as 'ru' | 'ky';
       const r = await fetch(`${API_URL}/auth/send-reset-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: clean }),
+        body: JSON.stringify({ phone: clean, type: otpType, lang }),
       });
       const data = await r.json();
       if (!r.ok) { setError(data.message || t('common.error')); return; }
@@ -143,6 +146,56 @@ const ForgotPasswordScreen = () => {
                       keyboardType="phone-pad"
                       style={{ flex: 1, fontSize: 16, color: Colors.black, marginLeft: 8 }}
                     />
+                  </XStack>
+                </YStack>
+
+                {/* SMS / WhatsApp kanal tanlash */}
+                <YStack gap={8}>
+                  <Text fontSize={13} fontWeight="600" color={Colors.black}>{t('auth.forgotChannelTitle')}</Text>
+                  <XStack gap={10}>
+                    {/* SMS tugmasi */}
+                    <TouchableOpacity
+                      onPress={() => setOtpType('SMS')}
+                      style={{
+                        flex: 1, height: 46, borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: otpType === 'SMS' ? '#FFD700' : Colors.border,
+                        backgroundColor: otpType === 'SMS' ? '#FFFBEB' : Colors.bg,
+                        alignItems: 'center', justifyContent: 'center',
+                        flexDirection: 'row', gap: 6,
+                      }}
+                    >
+                      <MessageSquare size={16} color={otpType === 'SMS' ? '#1A1A1A' : Colors.gray} />
+                      <Text
+                        fontSize={13}
+                        fontWeight={otpType === 'SMS' ? '700' : '500'}
+                        color={otpType === 'SMS' ? Colors.black : Colors.gray}
+                      >
+                        {t('auth.forgotChannelSms')}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* WhatsApp tugmasi */}
+                    <TouchableOpacity
+                      onPress={() => setOtpType('WHATSAPP')}
+                      style={{
+                        flex: 1, height: 46, borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: otpType === 'WHATSAPP' ? '#25D366' : Colors.border,
+                        backgroundColor: otpType === 'WHATSAPP' ? '#F0FDF4' : Colors.bg,
+                        alignItems: 'center', justifyContent: 'center',
+                        flexDirection: 'row', gap: 6,
+                      }}
+                    >
+                      <MessageCircle size={16} color={otpType === 'WHATSAPP' ? '#25D366' : Colors.gray} />
+                      <Text
+                        fontSize={13}
+                        fontWeight={otpType === 'WHATSAPP' ? '700' : '500'}
+                        color={otpType === 'WHATSAPP' ? '#25D366' : Colors.gray}
+                      >
+                        {t('auth.forgotChannelWhatsApp')}
+                      </Text>
+                    </TouchableOpacity>
                   </XStack>
                 </YStack>
 

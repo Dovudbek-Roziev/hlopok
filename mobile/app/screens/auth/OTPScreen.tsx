@@ -4,7 +4,7 @@ import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { ChevronLeft, MessageSquare } from 'lucide-react-native';
+import { ChevronLeft, MessageSquare, MessageCircle } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { authApi } from '../../api/auth';
 import { useColors } from '../../theme/useColors';
@@ -17,7 +17,7 @@ const RESEND_DELAY = 60;
 
 const OTPScreen = () => {
   const Colors     = useColors();
-  const { t }      = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route      = useRoute<Route>();
   const { phone }  = route.params;
@@ -29,6 +29,8 @@ const OTPScreen = () => {
   const [error, setError]           = useState('');
   const [codeSent, setCodeSent]     = useState(false);
   const [countdown, setCountdown]   = useState(0);
+  // SMS yoki WHATSAPP kanal tanlash
+  const [otpType, setOtpType]       = useState<'SMS' | 'WHATSAPP'>('SMS');
 
   const inputs = [
     useRef<TextInput>(null),
@@ -52,7 +54,9 @@ const OTPScreen = () => {
     setSending(true);
     setError('');
     try {
-      await authApi.sendOTP(localPhone);
+      // tilni backend formatiga o'girish: ky -> ky, ru -> ru
+      const lang = (i18n.language === 'ky' ? 'ky' : 'ru') as 'ru' | 'ky';
+      await authApi.sendOTP(localPhone, otpType, lang);
       setCodeSent(true);
       setDigits(['', '', '', '']);
       setCountdown(RESEND_DELAY);
@@ -160,6 +164,64 @@ const OTPScreen = () => {
                 color: '#1A1A1A', textAlign: 'center', letterSpacing: 2,
               }}
             />
+          </YStack>
+        )}
+
+        {/* SMS / WhatsApp kanal tanlash (faqat kod yuborilmasdan oldin) */}
+        {!codeSent && (
+          <YStack gap={10} marginBottom={24}>
+            <Text fontSize={13} fontWeight="600" color="#6B7280">{t('auth.otpChannelTitle')}</Text>
+            <XStack gap={10}>
+              {/* SMS tugmasi */}
+              <TouchableOpacity
+                onPress={() => setOtpType('SMS')}
+                style={{
+                  flex: 1, height: 48, borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: otpType === 'SMS' ? '#FFD700' : '#E5E7EB',
+                  backgroundColor: otpType === 'SMS' ? '#FFFBEB' : '#F9FAFB',
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 6,
+                }}
+              >
+                <MessageSquare
+                  size={18}
+                  color={otpType === 'SMS' ? '#1A1A1A' : '#9CA3AF'}
+                />
+                <Text
+                  fontSize={14}
+                  fontWeight={otpType === 'SMS' ? '700' : '500'}
+                  color={otpType === 'SMS' ? '#1A1A1A' : '#6B7280'}
+                >
+                  {t('auth.otpChannelSms')}
+                </Text>
+              </TouchableOpacity>
+
+              {/* WhatsApp tugmasi */}
+              <TouchableOpacity
+                onPress={() => setOtpType('WHATSAPP')}
+                style={{
+                  flex: 1, height: 48, borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: otpType === 'WHATSAPP' ? '#25D366' : '#E5E7EB',
+                  backgroundColor: otpType === 'WHATSAPP' ? '#F0FDF4' : '#F9FAFB',
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 6,
+                }}
+              >
+                <MessageCircle
+                  size={18}
+                  color={otpType === 'WHATSAPP' ? '#25D366' : '#9CA3AF'}
+                />
+                <Text
+                  fontSize={14}
+                  fontWeight={otpType === 'WHATSAPP' ? '700' : '500'}
+                  color={otpType === 'WHATSAPP' ? '#25D366' : '#6B7280'}
+                >
+                  {t('auth.otpChannelWhatsApp')}
+                </Text>
+              </TouchableOpacity>
+            </XStack>
           </YStack>
         )}
 

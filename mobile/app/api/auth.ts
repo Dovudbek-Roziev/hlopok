@@ -2,7 +2,7 @@
 import api from './client';
 
 export const authApi = {
-  sendOTP:              (phone: string) => api.post('/auth/send-otp', { phone }),
+  sendOTP:              (phone: string, type: 'SMS' | 'WHATSAPP', lang: 'ru' | 'kg' | 'ky') => api.post('/auth/send-otp', { phone, type, lang }),
   verifyOTP:            (phone: string, code: string) => api.post('/auth/verify-otp', { phone, code }),
   register:             (data: any) => api.post('/auth/register', data),
   loginByPhone:         (phone: string, password: string) => api.post('/auth/login', { phone, password }),

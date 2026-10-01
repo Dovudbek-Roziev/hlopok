@@ -90,7 +90,13 @@
     "otpSent": "Код жөнөтүлдү",
     "otpInvalid": "Код туура эмес",
     "otpExpired": "Код мөөнөтү өттү, жаңысын сураңыз",
-    "otpAlreadyRegistered": "Бул номер катталган"
+    "otpAlreadyRegistered": "Бул номер катталган",
+    "otpChannelTitle": "Кодду кантип алуу?",
+    "otpChannelSms": "SMS аркылуу код",
+    "otpChannelWhatsApp": "WhatsApp аркылуу код",
+    "forgotChannelTitle": "Кодду кантип алуу?",
+    "forgotChannelSms": "SMS",
+    "forgotChannelWhatsApp": "WhatsApp"
   },
   "home": {
     "greeting": "Салам!",

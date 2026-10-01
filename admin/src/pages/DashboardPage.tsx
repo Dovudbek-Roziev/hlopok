@@ -67,13 +67,7 @@ const DashboardPage = () => {
     refetchInterval: 30000,
   });
 
-  const { data: lowStock } = useQuery({
-    queryKey: ['low-stock'],
-    queryFn:  () => api.get('/products/low-stock?threshold=3').then(r => r.data.products),
-  });
-
   const stats       = data || {};
-  const products    = lowStock || [];
   const topProducts = stats.topProducts || [];
   const growth      = stats.monthGrowth ?? 0;
   const isPositive  = growth >= 0;
@@ -311,33 +305,6 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Low stock */}
-      {products.length > 0 && (
-        <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#FEF3C7',
-              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AlertTriangle size={16} color="#D97706" />
-            </div>
-            <h2 style={{ color: '#1A1A1A', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('dashboard.lowStock')}</h2>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {products.slice(0, 5).map((p: any) => (
-              <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 14px', backgroundColor: '#F9FAFB', borderRadius: 8, border: '1px solid #E5E7EB' }}>
-                <span style={{ color: '#1A1A1A', fontSize: 14 }}>
-                  {lang === 'ky' ? (p.name_ky || p.name_ru) : p.name_ru}
-                </span>
-                <span style={{ color: '#92400E', fontSize: 12, fontWeight: 600,
-                  backgroundColor: '#FEF9C3', padding: '3px 8px', borderRadius: 6 }}>
-                  {(p.variants || []).filter((v: any) => v.stock < 3 && v.stock > 0)
-                    .map((v: any) => `${v.size}: ${v.stock}`).join(', ')}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

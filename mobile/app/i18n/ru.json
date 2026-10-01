@@ -90,7 +90,13 @@
     "otpSent": "Код отправлен",
     "otpInvalid": "Неверный код",
     "otpExpired": "Код истёк, запросите новый",
-    "otpAlreadyRegistered": "Этот номер уже зарегистрирован"
+    "otpAlreadyRegistered": "Этот номер уже зарегистрирован",
+    "otpChannelTitle": "Как получить код?",
+    "otpChannelSms": "Код по SMS",
+    "otpChannelWhatsApp": "Код в WhatsApp",
+    "forgotChannelTitle": "Как получить код?",
+    "forgotChannelSms": "SMS",
+    "forgotChannelWhatsApp": "WhatsApp"
   },
   "home": {
     "greeting": "Привет!",
