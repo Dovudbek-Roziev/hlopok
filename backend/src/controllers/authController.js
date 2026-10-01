@@ -7,6 +7,8 @@ const OTP  = require('../models/OTP');
 const { uploadToCloudinary } = require('../utils/cloudinaryUpload');
 const { sendSMS } = require('../utils/sms');
 const msg = require('../utils/msg');
+const { handleOtpSending } = require('../services/otpService');
+
 
 const generateToken = (userId) =>
   jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
@@ -322,7 +324,7 @@ exports.savePushToken = async (req, res) => {
 // ─── OTP yuborish / Send OTP ─────────────────────────────────────
 exports.sendOTP = async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, type, lang } = req.body;
     const clean = (phone || '').replace(/\D/g, '');
 
     if (clean.length !== 10 || !clean.startsWith('0')) {
@@ -348,9 +350,8 @@ exports.sendOTP = async (req, res) => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     await OTP.create({ phone: clean, code, expiresAt: new Date(Date.now() + 5 * 60 * 1000) });
 
-    // SMS yuborish (+996 prefixi bilan, 0 ni olib tashlab)
-    const intlPhone = `+996${clean.slice(1)}`;
-    await sendSMS(intlPhone, `Hlopok: код подтверждения ${code}. Действует 5 минут.`);
+    // OTP yuborish (SMS yoki WHATSAPP, fallback bilan)
+    await handleOtpSending(clean, type || 'SMS', lang || 'ru', code);
 
     res.json({ success: true, message: msg(req, 'Код отправлен', 'Код жөнөтүлдү') });
   } catch (error) {
@@ -362,7 +363,7 @@ exports.sendOTP = async (req, res) => {
 // ─── Parol tiklash OTP / Send reset OTP ──────────────────────────
 exports.sendResetOTP = async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, type, lang } = req.body;
     const clean = (phone || '').replace(/\D/g, '');
 
     if (clean.length !== 10 || !clean.startsWith('0')) {
@@ -384,8 +385,8 @@ exports.sendResetOTP = async (req, res) => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     await OTP.create({ phone: `reset_${clean}`, code, expiresAt: new Date(Date.now() + 5 * 60 * 1000) });
 
-    const intlPhone = `+996${clean.slice(1)}`;
-    await sendSMS(intlPhone, `Hlopok: сброс пароля — код ${code}. Действует 5 минут.`);
+    // OTP yuborish (SMS yoki WHATSAPP, fallback bilan)
+    await handleOtpSending(clean, type || 'SMS', lang || 'ru', code);
 
     res.json({ success: true, message: msg(req, 'Код отправлен', 'Код жөнөтүлдү') });
   } catch (error) {
