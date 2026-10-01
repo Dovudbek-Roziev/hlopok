@@ -8,7 +8,6 @@ const ctrl       = require('../controllers/productController');
 const reviewCtrl = require('../controllers/reviewController');
 
 router.get ('/',           optionalAuth, ctrl.getProducts);
-router.get ('/low-stock',  protect, adminOnly, ctrl.getLowStockProducts);
 router.get ('/:id',        optionalAuth, ctrl.getProduct);
 router.post('/',           protect, adminOnly, uploadProduct.array('images', 10), ctrl.createProduct);
 router.put ('/:id',        protect, adminOnly, uploadProduct.array('images', 10), ctrl.updateProduct);

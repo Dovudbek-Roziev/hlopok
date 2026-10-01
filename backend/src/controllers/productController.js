@@ -224,18 +224,3 @@ exports.updateStock = async (req, res) => {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка обновления склада', 'Кампарды жаңыртууда ката') });
   }
 };
-
-// ─── Kam qolgan mahsulotlar (Admin) / Low stock products ─────────
-exports.getLowStockProducts = async (req, res) => {
-  try {
-    const threshold = Number(req.query.threshold) || 3;
-    const products = await Product.find({
-      isActive: true,
-      variants: { $elemMatch: { stock: { $lt: threshold, $gte: 0 } } },
-    }).populate('category', 'name_ru');
-
-    res.json({ success: true, products });
-  } catch (error) {
-    res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });
-  }
-};

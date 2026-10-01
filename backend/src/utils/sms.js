@@ -3,7 +3,7 @@ const axios = require('axios');
 const sendSMS = async (phone, message) => {
   const login    = process.env.NIKITA_LOGIN;
   const password = process.env.NIKITA_PASSWORD;
-  const sender   = process.env.NIKITA_SENDER || 'HLOPOK';
+  const sender   = process.env.NIKITA_SENDER || 'Hlopok.Kg';
 
   if (!login || !password) {
     // ENV vars sozlanmagan — konsolga chiqar (development)

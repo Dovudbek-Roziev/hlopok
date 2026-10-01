@@ -187,116 +187,116 @@
 
 ---
 
-## 🇺🇿 O'zbekcha
+    ## 🇺🇿 O'zbekcha
 
-### Hlopok nima?
+    ### Hlopok nima?
 
-**Hlopok** — Qirg'izistondagi real to'qimachilik do'koni uchun qurilgan to'liq e-commerce ekotizim. Platforma uch o'zaro bog'liq qismdan iborat: xaridorlar uchun kross-platforma mobil ilova, do'kon menejerlari uchun veb-admin panel va bulutga joylashtirilgan REST API backend.
+    **Hlopok** — Qirg'izistondagi real to'qimachilik do'koni uchun qurilgan to'liq e-commerce ekotizim. Platforma uch o'zaro bog'liq qismdan iborat: xaridorlar uchun kross-platforma mobil ilova, do'kon menejerlari uchun veb-admin panel va bulutga joylashtirilgan REST API backend.
 
-### ✨ Asosiy imkoniyatlar
+    ### ✨ Asosiy imkoniyatlar
 
-**Mobil ilova**
-- 🛍️ Kategoriyalar, brendlar, qidiruv va filtrlar bilan mahsulotlar katalogi
-- 💸 Aksiyalar — avtomatik chegirma belgilari va chizilgan narxlar
-- 🎁 Sadoqat tizimi — har bir buyurtmadan bonus, bonus bilan to'lash
-- 🛒 Savat, buyurtma berish — yetkazib berish yoki olib ketish
-- 📦 Socket.io orqali buyurtma holatini real vaqtda kuzatish
-- 🔔 Buyurtma holati o'zgarganda push bildirishnomalar
-- 🌍 To'liq ko'p tillilik: Rus + Qirg'iz
+    **Mobil ilova**
+    - 🛍️ Kategoriyalar, brendlar, qidiruv va filtrlar bilan mahsulotlar katalogi
+    - 💸 Aksiyalar — avtomatik chegirma belgilari va chizilgan narxlar
+    - 🎁 Sadoqat tizimi — har bir buyurtmadan bonus, bonus bilan to'lash
+    - 🛒 Savat, buyurtma berish — yetkazib berish yoki olib ketish
+    - 📦 Socket.io orqali buyurtma holatini real vaqtda kuzatish
+    - 🔔 Buyurtma holati o'zgarganda push bildirishnomalar
+    - 🌍 To'liq ko'p tillilik: Rus + Qirg'iz
 
-**Admin panel**
-- 📊 Jonli savdo statistikasi va grafiklar bilan dashboard
-- 📦 Mahsulotlarni to'liq boshqarish (CRUD, Cloudinary orqali rasm yuklash)
-- 🎯 Aksiyalar — chegirma foizi, sanalar va mahsulotlar ro'yxati
-- 🛒 Buyurtmalarni boshqarish — holatlarni o'zgartirish (push avtomatik yuboriladi)
-- 👥 Foydalanuvchilarni boshqarish — ko'rish, bloklash, parolni tiklash
-- 📢 Push xabar yuborish — barcha/faol/bonus foydalanuvchilarga
+    **Admin panel**
+    - 📊 Jonli savdo statistikasi va grafiklar bilan dashboard
+    - 📦 Mahsulotlarni to'liq boshqarish (CRUD, Cloudinary orqali rasm yuklash)
+    - 🎯 Aksiyalar — chegirma foizi, sanalar va mahsulotlar ro'yxati
+    - 🛒 Buyurtmalarni boshqarish — holatlarni o'zgartirish (push avtomatik yuboriladi)
+    - 👥 Foydalanuvchilarni boshqarish — ko'rish, bloklash, parolni tiklash
+    - 📢 Push xabar yuborish — barcha/faol/bonus foydalanuvchilarga
 
-### 🛠️ Texnologiyalar
+    ### 🛠️ Texnologiyalar
 
-| Qatlam | Texnologiyalar |
-|---|---|
-| **Mobil** | React Native 0.76, Expo SDK 52, TypeScript, Tamagui, React Query, i18next |
-| **Admin panel** | React 18, TypeScript, Vite, React Router v6, TanStack Query |
-| **Backend** | Node.js, Express.js, MongoDB, Mongoose, Socket.io, JWT, Cloudinary |
-| **Deploy** | Vercel (backend + admin), EAS Build (Android/iOS APK) |
+    | Qatlam | Texnologiyalar |
+    |---|---|
+    | **Mobil** | React Native 0.76, Expo SDK 52, TypeScript, Tamagui, React Query, i18next |
+    | **Admin panel** | React 18, TypeScript, Vite, React Router v6, TanStack Query |
+    | **Backend** | Node.js, Express.js, MongoDB, Mongoose, Socket.io, JWT, Cloudinary |
+    | **Deploy** | Vercel (backend + admin), EAS Build (Android/iOS APK) |
 
----
+    ---
 
-## 📁 Project Structure
+    ## 📁 Project Structure
 
-```
-Hlopok/
-│
-├── 📱 mobile/                    # React Native + Expo mobile app
-│   ├── app/
-│   │   ├── screens/              # 20+ app screens
-│   │   │   ├── home/             # HomeScreen
-│   │   │   ├── catalog/          # CatalogScreen, CategoryScreen
-│   │   │   ├── product/          # ProductScreen
-│   │   │   ├── cart/             # CartScreen, CheckoutScreen
-│   │   │   ├── orders/           # OrdersScreen, OrderDetailScreen
-│   │   │   ├── promotions/       # PromotionsScreen, PromotionDetailScreen
-│   │   │   ├── profile/          # ProfileScreen, BonusScreen, etc.
-│   │   │   └── auth/             # LoginScreen, RegisterScreen, OtpScreen
-│   │   ├── api/                  # API client + all endpoint functions
-│   │   ├── components/           # Shared UI components
-│   │   ├── store/                # Zustand state management
-│   │   ├── theme/                # Colors, useColors hook (dark/light)
-│   │   └── i18n/                 # RU + KY translations
-│   └── eas.json                  # EAS Build config
-│
-├── 🖥️  admin/                    # React web admin panel
-│   ├── src/
-│   │   ├── pages/                # 12+ admin pages
-│   │   │   ├── DashboardPage     # Stats & charts
-│   │   │   ├── ProductsPage      # Product CRUD
-│   │   │   ├── OrdersPage        # Order management
-│   │   │   ├── PromotionsPage    # Sales & discounts
-│   │   │   ├── BonusPage         # Loyalty system
-│   │   │   ├── UsersPage         # User management
-│   │   │   ├── BannersPage       # Banner management
-│   │   │   ├── FAQPage           # FAQ management
-│   │   │   └── SettingsPage      # Store & account settings
-│   │   ├── components/           # Shared UI (Toast, Confirm, etc.)
-│   │   ├── api/                  # API client + endpoints
-│   │   ├── store/                # Admin auth store
-│   │   └── i18n/                 # RU + KY translations
-│   └── vercel.json               # Vercel SPA routing config
-│
-└── ⚙️  backend/                  # Node.js REST API
-    ├── src/
-    │   ├── controllers/          # Business logic
-    │   ├── models/               # Mongoose schemas
-    │   │   ├── User, Order       # Core models
-    │   │   ├── Product, Category, Brand
-    │   │   ├── Promotion, Banner, Bonus
-    │   │   ├── Review, FAQ, OTP
-    │   ├── routes/               # Express routes
-    │   ├── middleware/           # Auth, admin guards
-    │   └── utils/                # SMS, push, helpers
-    └── vercel.json               # Vercel serverless config
-```
+    ```
+    Hlopok/
+    │
+    ├── 📱 mobile/                    # React Native + Expo mobile app
+    │   ├── app/
+    │   │   ├── screens/              # 20+ app screens
+    │   │   │   ├── home/             # HomeScreen
+    │   │   │   ├── catalog/          # CatalogScreen, CategoryScreen
+    │   │   │   ├── product/          # ProductScreen
+    │   │   │   ├── cart/             # CartScreen, CheckoutScreen
+    │   │   │   ├── orders/           # OrdersScreen, OrderDetailScreen
+    │   │   │   ├── promotions/       # PromotionsScreen, PromotionDetailScreen
+    │   │   │   ├── profile/          # ProfileScreen, BonusScreen, etc.
+    │   │   │   └── auth/             # LoginScreen, RegisterScreen, OtpScreen
+    │   │   ├── api/                  # API client + all endpoint functions
+    │   │   ├── components/           # Shared UI components
+    │   │   ├── store/                # Zustand state management
+    │   │   ├── theme/                # Colors, useColors hook (dark/light)
+    │   │   └── i18n/                 # RU + KY translations
+    │   └── eas.json                  # EAS Build config
+    │
+    ├── 🖥️  admin/                    # React web admin panel
+    │   ├── src/
+    │   │   ├── pages/                # 12+ admin pages
+    │   │   │   ├── DashboardPage     # Stats & charts
+    │   │   │   ├── ProductsPage      # Product CRUD
+    │   │   │   ├── OrdersPage        # Order management
+    │   │   │   ├── PromotionsPage    # Sales & discounts
+    │   │   │   ├── BonusPage         # Loyalty system
+    │   │   │   ├── UsersPage         # User management
+    │   │   │   ├── BannersPage       # Banner management
+    │   │   │   ├── FAQPage           # FAQ management
+    │   │   │   └── SettingsPage      # Store & account settings
+    │   │   ├── components/           # Shared UI (Toast, Confirm, etc.)
+    │   │   ├── api/                  # API client + endpoints
+    │   │   ├── store/                # Admin auth store
+    │   │   └── i18n/                 # RU + KY translations
+    │   └── vercel.json               # Vercel SPA routing config
+    │
+    └── ⚙️  backend/                  # Node.js REST API
+        ├── src/
+        │   ├── controllers/          # Business logic
+        │   ├── models/               # Mongoose schemas
+        │   │   ├── User, Order       # Core models
+        │   │   ├── Product, Category, Brand
+        │   │   ├── Promotion, Banner, Bonus
+        │   │   ├── Review, FAQ, OTP
+        │   ├── routes/               # Express routes
+        │   ├── middleware/           # Auth, admin guards
+        │   └── utils/                # SMS, push, helpers
+        └── vercel.json               # Vercel serverless config
+    ```
 
----
+    ---
 
-## 🚀 Deployment
+    ## 🚀 Deployment
 
-| Service | Platform | Status |
-|---|---|---|
-| Backend API | Vercel (Serverless) | ✅ Live |
-| Admin Panel | Vercel (Static SPA) | ✅ Live |
-| Mobile App | EAS Build (APK) | ✅ Ready |
-| Database | MongoDB Atlas | ✅ Live |
-| Media Storage | Cloudinary | ✅ Live |
-| SMS Gateway | Nikita.kg | ✅ Connected |
+    | Service | Platform | Status |
+    |---|---|---|
+    | Backend API | Vercel (Serverless) | ✅ Live |
+    | Admin Panel | Vercel (Static SPA) | ✅ Live |
+    | Mobile App | EAS Build (APK) | ✅ Ready |
+    | Database | MongoDB Atlas | ✅ Live |
+    | Media Storage | Cloudinary | ✅ Live |
+    | SMS Gateway | Nikita.kg | ✅ Connected |
 
----
+    ---
 
-<div align="center">
+    <div align="center">
 
-**Built with passion for Hlopok textile store 🧵**
+    **Built with passion for Hlopok textile store 🧵**
 
-*React Native • Node.js • MongoDB • Vercel*
+    *React Native • Node.js • MongoDB • Vercel*
 
-</div>
+    </div>
