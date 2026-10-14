@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text, Input, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +19,7 @@ type DeliveryMethod = 'pickup' | 'delivery';
 type PaymentMethod  = 'cash' | 'online';
 
 const CheckoutScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const isKy = i18n.language === 'ky';
@@ -31,6 +33,7 @@ const CheckoutScreen = () => {
   const [name, setName]                   = useState(user ? `${user.firstName} ${user.lastName}`.trim() : '');
   const [phone, setPhone]                 = useState(user?.phone || '');
   const submitting                         = useRef(false);
+  const clientRequestId = useRef(`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`).current;
   const isMounted                          = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
   const [deliveryAddress, setAddress]     = useState('');
@@ -44,12 +47,13 @@ const CheckoutScreen = () => {
     queryFn: () => bonusApi.getSettings().then(r => r.data.settings),
     staleTime: 10 * 60 * 1000,
   });
-  const bonusPct = bonusSettings?.bonusPercent ?? 5;
+  const bonusWindowOpen = !user?.bonusExpiresAt || new Date(user.bonusExpiresAt) > new Date();
+  const bonusPct = bonusWindowOpen ? (bonusSettings?.bonusPercent ?? 5) : 0;
 
   const subtotal    = totalPrice();
-  const bonusApply  = useBonus ? Math.min(user?.bonusBalance || 0, subtotal) : 0;
+  const bonusApply  = useBonus && bonusWindowOpen ? Math.min(user?.bonusBalance || 0, subtotal) : 0;
   const total       = Math.max(0, subtotal - bonusApply);
-  const bonusEarned = Math.floor(total * bonusPct / 100);
+  const bonusEarned = Math.floor(subtotal * bonusPct / 100);
 
   const handleOrder = async () => {
     if (submitting.current) return;
@@ -71,6 +75,7 @@ const CheckoutScreen = () => {
     submitting.current = true;
     try {
       const res = await ordersApi.createOrder({
+        clientRequestId,
         items: items.map(i => ({
           productId:   i.productId,
           size:        i.size,
@@ -91,9 +96,9 @@ const CheckoutScreen = () => {
       const params = {
         orderNumber:     order.orderNumber,
         orderId:         order._id,
-        total,
-        subtotal,
-        bonusUsed:       bonusApply,
+        total:           order.total,
+        subtotal:        order.subtotal,
+        bonusUsed:       order.bonusUsed,
         deliveryType:    method,
         deliveryAddress: method === 'delivery' ? deliveryAddress.trim() : '',
         contactName:     name.trim(),
@@ -120,7 +125,7 @@ const CheckoutScreen = () => {
       <YStack flex={1} backgroundColor={Colors.bg}>
 
         {/* ── Header ── */}
-        <YStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={16}>
+        <YStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={16}>
           <XStack alignItems="center" gap={12}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ChevronLeft color={Colors.black} size={24} />

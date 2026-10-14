@@ -1,5 +1,6 @@
 // Aksiyalar ro'yxati ekrani / Promotions list screen
 import React from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text, Image, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +12,7 @@ import { promotionsApi } from '../../api/categories';
 import { useColors } from '../../theme/useColors';
 
 const PromotionsScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
@@ -26,7 +28,7 @@ const PromotionsScreen = () => {
   return (
     <ScreenWrapper>
     <YStack flex={1} backgroundColor={Colors.bg}>
-      <XStack backgroundColor={Colors.bg} paddingTop={52} paddingHorizontal={16} paddingBottom={14}
+      <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={14}
         alignItems="center" gap={12}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft color={Colors.black} size={24} />

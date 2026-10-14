@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, Modal, TouchableOpacity, View } from 'react-native';
 import { YStack, XStack, Text, Image } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
@@ -13,6 +14,7 @@ import { getColorName } from '../../utils/colorName';
 import { getSizeLabel } from '../../utils/sizeLabel';
 
 const CartScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
@@ -20,12 +22,12 @@ const CartScreen = () => {
   const { isAuthenticated, user } = useAuthStore();
   const lang = i18n.language === 'ky' ? 'ky' : 'ru';
 
-  const [removeTarget, setRemoveTarget] = useState<{ productId: string; size: string; color: string } | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ productId: string; size: string; color: string; promotionId?: string } | null>(null);
 
   if (items.length === 0) {
     return (
       <ScreenWrapper>
-        <YStack flex={1} backgroundColor={Colors.bg} alignItems="center" justifyContent="center" gap={16} padding={32} paddingTop={52}>
+        <YStack flex={1} backgroundColor={Colors.bg} alignItems="center" justifyContent="center" gap={16} padding={32} paddingTop={headerTopPadding}>
           <ShoppingBag color={Colors.grayLight} size={80} />
           <Text fontSize={18} fontWeight="700" color={Colors.black}>{t('cart.empty')}</Text>
           <Text color={Colors.gray} fontSize={13} textAlign="center">{t('cart.emptyHint')}</Text>
@@ -46,7 +48,7 @@ const CartScreen = () => {
     <YStack flex={1} backgroundColor={Colors.bg}>
 
       {/* ── Header ── */}
-      <YStack backgroundColor={Colors.bg} paddingHorizontal={20} paddingTop={52} paddingBottom={14}>
+      <YStack backgroundColor={Colors.bg} paddingHorizontal={20} paddingTop={headerTopPadding} paddingBottom={14}>
         <XStack justifyContent="space-between" alignItems="center">
           <Text fontSize={22} fontWeight="700" color={Colors.black}>{t('cart.title')}</Text>
           <YStack backgroundColor={Colors.white} borderWidth={1} borderColor={Colors.border} borderRadius={12} paddingHorizontal={12} paddingVertical={4}>
@@ -57,7 +59,7 @@ const CartScreen = () => {
 
       <FlatList
         data={items}
-        keyExtractor={i => `${i.productId}_${i.size}_${i.color}`}
+        keyExtractor={i => `${i.productId}_${i.size}_${i.color}_${i.promotionId || 'regular'}`}
         contentContainerStyle={{ padding: 12, gap: 10 }}
         renderItem={({ item }) => (
           <XStack backgroundColor={Colors.white} borderRadius={14} padding={12} gap={12}
@@ -72,7 +74,7 @@ const CartScreen = () => {
                   {item[`name_${lang}`]}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => setRemoveTarget({ productId: item.productId, size: item.size, color: item.color })}
+                  onPress={() => setRemoveTarget({ productId: item.productId, size: item.size, color: item.color, promotionId: item.promotionId })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Trash2 color={Colors.red} size={16} />
                 </TouchableOpacity>
@@ -92,12 +94,24 @@ const CartScreen = () => {
                   </XStack>
                 ) : null}
               </XStack>
-              <Text fontWeight="700" color={Colors.green} fontSize={15}>{formatPrice(item.price)}</Text>
+              <XStack justifyContent="space-between" alignItems="center">
+                <YStack gap={2}>
+                  <Text fontWeight="700" color={Colors.green} fontSize={15}>{formatPrice(item.price)}</Text>
+                  <Text color={Colors.gray} fontSize={11}>
+                    {Number.isInteger(item.maxStock)
+                      ? t('cart.inStock', { count: item.maxStock })
+                      : t('cart.stockUnknown')}
+                  </Text>
+                </YStack>
+                <Text fontWeight="700" color={Colors.black} fontSize={14}>
+                  {formatPrice(item.price * item.qty)}
+                </Text>
+              </XStack>
               <XStack alignItems="center" gap={10} marginTop={6}>
                 <TouchableOpacity
                   onPress={() => item.qty > 1
-                    ? updateQty(item.productId, item.size, item.color, item.qty - 1)
-                    : setRemoveTarget({ productId: item.productId, size: item.size, color: item.color })}
+                    ? updateQty(item.productId, item.size, item.color, item.qty - 1, item.promotionId)
+                    : setRemoveTarget({ productId: item.productId, size: item.size, color: item.color, promotionId: item.promotionId })}
                   style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.bg,
                     alignItems: 'center', justifyContent: 'center',
                     borderWidth: 1, borderColor: Colors.border }}>
@@ -105,10 +119,11 @@ const CartScreen = () => {
                 </TouchableOpacity>
                 <Text fontWeight="700" fontSize={16} color={Colors.black} minWidth={20} textAlign="center">{item.qty}</Text>
                 <TouchableOpacity
-                  onPress={() => updateQty(item.productId, item.size, item.color, item.qty + 1)}
-                  disabled={item.qty >= item.maxStock}
+                  onPress={() => updateQty(item.productId, item.size, item.color, item.qty + 1, item.promotionId)}
+                  disabled={!Number.isInteger(item.maxStock) || item.qty >= item.maxStock}
                   style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.yellow,
-                    alignItems: 'center', justifyContent: 'center', opacity: item.qty >= item.maxStock ? 0.4 : 1 }}>
+                    alignItems: 'center', justifyContent: 'center',
+                    opacity: !Number.isInteger(item.maxStock) || item.qty >= item.maxStock ? 0.4 : 1 }}>
                   <Plus color={Colors.black} size={15} />
                 </TouchableOpacity>
               </XStack>
@@ -176,7 +191,7 @@ const CartScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
-                if (removeTarget) removeItem(removeTarget.productId, removeTarget.size, removeTarget.color);
+                if (removeTarget) removeItem(removeTarget.productId, removeTarget.size, removeTarget.color, removeTarget.promotionId);
                 setRemoveTarget(null);
               }}
               style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: Colors.red,

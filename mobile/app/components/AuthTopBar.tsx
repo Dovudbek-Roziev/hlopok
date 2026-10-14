@@ -3,9 +3,11 @@ import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { X } from 'lucide-react-native';
 import { Colors } from '../theme/colors';
+import { useHeaderTopPadding } from '../utils/useHeaderTopPadding';
 
 const AuthTopBar = () => {
   const navigation = useNavigation<any>();
+  const headerTopPadding = useHeaderTopPadding();
 
   const handleClose = () => {
     const parent = (navigation as any).getParent();
@@ -17,7 +19,7 @@ const AuthTopBar = () => {
   };
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, { paddingTop: headerTopPadding }]}>
       <View />
       <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
         <X color={Colors.grayDark} size={22} />
@@ -31,7 +33,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 52,
     paddingHorizontal: 20,
     paddingBottom: 4,
   },

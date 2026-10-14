@@ -19,9 +19,19 @@ const deleteImage = async (publicId) => {
 // Public ID ni URL dan olish / Extract public ID from URL
 const getPublicId = (url) => {
   if (!url) return null;
-  const parts = url.split('/');
-  const filename = parts[parts.length - 1];
-  return filename.split('.')[0];
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== 'res.cloudinary.com') return null;
+    const uploadPath = parsed.pathname.split('/upload/')[1];
+    if (!uploadPath) return null;
+    const segments = uploadPath.split('/');
+    const versionIndex = segments.findIndex(segment => /^v\d+$/.test(segment));
+    if (versionIndex < 0) return null;
+    const publicId = segments.slice(versionIndex + 1).join('/');
+    return publicId.replace(/\.[^/.]+$/, '') || null;
+  } catch {
+    return null;
+  }
 };
 
 module.exports = { cloudinary, deleteImage, getPublicId };

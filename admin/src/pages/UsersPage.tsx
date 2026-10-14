@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Search, UserX, UserCheck, X, Phone, Gift } from 'lucide-react';
+import { Search, UserX, UserCheck, X, Phone, Gift, User } from 'lucide-react';
 import api from '../api/client';
 import { toast } from '../components/Toast';
 import { Confirm } from '../components/Confirm';
@@ -92,15 +92,10 @@ const UsersPage = () => {
                 <tr key={u._id} className="tr-hover" style={{ borderBottom: '1px solid #F3F4F6' }}>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {u.avatar ? (
-                        <img src={u.avatar} alt="" style={{ width: 36, height: 36, borderRadius: 18, objectFit: 'cover', flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF9C3',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, color: '#92400E', fontSize: 14, flexShrink: 0 }}>
-                          {u.firstName?.[0]?.toUpperCase() || '?'}
-                        </div>
-                      )}
+                      <div style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF9C3',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <User size={17} color="#92400E" strokeWidth={1.8} />
+                      </div>
                       <div>
                         <div style={{ color: '#1A1A1A', fontSize: 14, fontWeight: 500 }}>{u.firstName} {u.lastName}</div>
                         <div style={{ color: '#6B7280', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>

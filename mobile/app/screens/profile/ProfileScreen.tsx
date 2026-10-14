@@ -1,19 +1,21 @@
 import React from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { ScrollView, TouchableOpacity } from 'react-native';
-import { YStack, XStack, Text, Image } from 'tamagui';
+import { YStack, XStack, Text } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import {
   Package, Heart, QrCode, Store, HelpCircle,
-  Globe, Lock, LogOut, ChevronRight, Pencil,
-  User, MessageCircle, Sparkles,
+  Globe, Lock, LogOut, ChevronRight,
+  User, MessageCircle, Sparkles, Trash2,
 } from 'lucide-react-native';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
 import { useConfirmStore } from '../../store/confirmStore';
+import { toast } from '../../store/toastStore';
 import { useColors } from '../../theme/useColors';
-import { formatPrice, getInitials, formatPhone } from '../../utils/format';
+import { formatPrice, formatPhone } from '../../utils/format';
 
 /* ─── Yordamchi komponentlar ─── */
 
@@ -91,6 +93,7 @@ const GuestView = () => {
 /* ─── Asosiy ekran ─── */
 
 const ProfileScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
@@ -106,6 +109,24 @@ const ProfileScreen = () => {
       cancelLabel: t('common.cancel'),
       destructive: true,
       onConfirm: logout,
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    useConfirmStore.getState().ask({
+      title: t('profile.deleteAccount'),
+      message: t('profile.deleteAccountConfirm'),
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await authApi.deleteAccount();
+          await logout();
+        } catch (err: any) {
+          toast.error(err.response?.data?.message || t('common.error'));
+        }
+      },
     });
   };
 
@@ -136,35 +157,17 @@ const ProfileScreen = () => {
     <ScrollView style={{ flex: 1, backgroundColor: Colors.bg }} showsVerticalScrollIndicator={false}>
 
       {/* ── Hero ── */}
-      <YStack backgroundColor={Colors.yellow} paddingTop={60} paddingBottom={40} paddingHorizontal={20}>
+      <YStack backgroundColor={Colors.yellow} paddingTop={headerTopPadding} paddingBottom={40} paddingHorizontal={20}>
 
-        {/* Avatar + tahrirlash */}
+        {/* Profile icon and account details */}
         <YStack alignItems="center" gap={12}>
           <YStack position="relative">
-            <YStack width={88} height={88} borderRadius={44} overflow="hidden"
+            <YStack width={88} height={88} borderRadius={44}
               backgroundColor="rgba(0,0,0,0.1)"
+              alignItems="center" justifyContent="center"
               style={{ borderWidth: 3, borderColor: 'rgba(255,255,255,0.8)' }}>
-              {user.avatar ? (
-                <Image source={{ uri: user.avatar }} width={88} height={88} resizeMode="cover" />
-              ) : (
-                <YStack flex={1} alignItems="center" justifyContent="center">
-                  <Text fontSize={30} fontWeight="800" color={Colors.black}>
-                    {getInitials(user.firstName, user.lastName)}
-                  </Text>
-                </YStack>
-              )}
+              <User color={Colors.black} size={40} strokeWidth={1.8} />
             </YStack>
-            {/* Kichik tahrirlash tugmasi */}
-            <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}
-              style={{
-                position: 'absolute', bottom: 0, right: -2,
-                width: 28, height: 28, borderRadius: 14,
-                backgroundColor: Colors.white,
-                alignItems: 'center', justifyContent: 'center',
-                borderWidth: 2, borderColor: Colors.yellow,
-              }}>
-              <Pencil color={Colors.black} size={13} />
-            </TouchableOpacity>
           </YStack>
 
           <YStack alignItems="center" gap={3}>
@@ -255,6 +258,9 @@ const ProfileScreen = () => {
         borderRadius={18} overflow="hidden" marginBottom={4}>
         <MenuItem icon={LogOut} label={t('auth.logout')}
           onPress={handleLogout} danger right={null} />
+        <Divider />
+        <MenuItem icon={Trash2} label={t('profile.deleteAccount')}
+          onPress={handleDeleteAccount} danger right={null} />
       </YStack>
 
       <Text color={Colors.grayLight} fontSize={11} textAlign="center" marginVertical={20}>

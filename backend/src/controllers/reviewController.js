@@ -18,7 +18,7 @@ exports.getProductReviews = async (req, res) => {
         { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
       ]),
       Review.find({ product: productId })
-        .populate('user', 'firstName lastName avatar')
+        .populate('user', 'firstName lastName')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -37,7 +37,7 @@ exports.getProductReviews = async (req, res) => {
 exports.canReview = async (req, res) => {
   try {
     const existing = await Review.findOne({ user: req.user._id, product: req.params.id })
-      .populate('user', 'firstName lastName avatar');
+      .populate('user', 'firstName lastName');
     if (existing) return res.json({ success: true, canReview: false, userReview: existing });
 
     const order = await Order.findOne({
@@ -80,7 +80,7 @@ exports.createReview = async (req, res) => {
       { rating: parsedRating, comment: (comment || '').slice(0, 300).trim() },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
-    await review.populate('user', 'firstName lastName avatar');
+    await review.populate('user', 'firstName lastName');
 
     res.status(201).json({ success: true, review });
   } catch {

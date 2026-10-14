@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
-import { YStack, XStack, Text, Input, Spinner, Image } from 'tamagui';
+import { YStack, XStack, Text, Input, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
-import { ChevronLeft, Camera, Phone, Shield } from 'lucide-react-native';
+import { ChevronLeft, Phone, Shield, User } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../theme/useColors';
-import { toast } from '../../store/toastStore';
 
 const EditProfileScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -20,43 +20,7 @@ const EditProfileScreen = () => {
   const [firstName, setFirst] = useState(user?.firstName || '');
   const [lastName, setLast]   = useState(user?.lastName || '');
   const [loading, setLoading] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError]     = useState('');
-
-  const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
-
-  const handlePickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      toast.error(t('profile.photoPermissionDenied'));
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-
-    const asset = result.assets[0];
-    setUploadingPhoto(true);
-    try {
-      const formData = new FormData();
-      formData.append('avatar', {
-        uri: asset.uri,
-        name: 'avatar.jpg',
-        type: 'image/jpeg',
-      } as any);
-      const res = await authApi.uploadAvatar(formData);
-      updateUser(res.data.user);
-      toast.success(t('profile.photoUpdated'));
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || t('common.error'));
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
 
   const handleSave = async () => {
     setError('');
@@ -78,7 +42,7 @@ const EditProfileScreen = () => {
       <YStack flex={1} backgroundColor={Colors.bg}>
 
         {/* ── Yellow header ── */}
-        <YStack backgroundColor={Colors.yellow} paddingTop={50} paddingHorizontal={16} paddingBottom={32}>
+        <YStack backgroundColor={Colors.yellow} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={32}>
           <XStack alignItems="center" gap={10} marginBottom={24}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ChevronLeft color={Colors.black} size={24} />
@@ -86,31 +50,13 @@ const EditProfileScreen = () => {
             <Text fontSize={18} fontWeight="700" color={Colors.black}>{t('profile.editProfile')}</Text>
           </XStack>
 
-          {/* Avatar */}
+          {/* Fixed profile icon */}
           <YStack alignItems="center">
-            <TouchableOpacity onPress={handlePickPhoto} disabled={uploadingPhoto} activeOpacity={0.8}>
-              <YStack position="relative">
-                <YStack width={90} height={90} borderRadius={45} backgroundColor="rgba(0,0,0,0.15)"
-                  alignItems="center" justifyContent="center" overflow="hidden"
-                  style={{ borderWidth: 3, borderColor: 'rgba(255,255,255,0.7)' }}>
-                  {uploadingPhoto ? (
-                    <Spinner color={Colors.black} />
-                  ) : user?.avatar ? (
-                    <Image source={{ uri: user.avatar }} width={90} height={90} resizeMode="cover" />
-                  ) : (
-                    <Text fontSize={32} fontWeight="700" color={Colors.black}>{initials}</Text>
-                  )}
-                </YStack>
-                {/* Camera badge */}
-                <YStack position="absolute" bottom={0} right={0}
-                  width={28} height={28} borderRadius={14} backgroundColor={Colors.white}
-                  alignItems="center" justifyContent="center"
-                  style={{ borderWidth: 2, borderColor: Colors.yellow }}>
-                  <Camera color={Colors.black} size={14} />
-                </YStack>
-              </YStack>
-            </TouchableOpacity>
-            <Text fontSize={12} color="rgba(0,0,0,0.55)" marginTop={8}>{t('profile.changePhoto')}</Text>
+            <YStack width={90} height={90} borderRadius={45} backgroundColor="rgba(0,0,0,0.12)"
+              alignItems="center" justifyContent="center"
+              style={{ borderWidth: 3, borderColor: 'rgba(255,255,255,0.7)' }}>
+              <User color={Colors.black} size={40} strokeWidth={1.8} />
+            </YStack>
           </YStack>
         </YStack>
 

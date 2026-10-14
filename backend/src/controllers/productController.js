@@ -192,33 +192,99 @@ exports.updateProduct = async (req, res) => {
 };
 
 // ─── Mahsulot o'chirish (Admin) / Delete product ────────────────
+exports.bulkArchiveProducts = async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? [...new Set(req.body.ids)] : [];
+    if (ids.length === 0 || ids.length > 500 || ids.some(id => typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id))) {
+      return res.status(400).json({ success: false, message: msg(req, 'Выберите от 1 до 500 товаров', '1ден 500гө чейин товар тандаңыз') });
+    }
+
+    const result = await Product.updateMany(
+      { _id: { $in: ids }, isActive: true },
+      { $set: { isActive: false } }
+    );
+    return res.json({ success: true, archived: result.modifiedCount });
+  } catch (error) {
+    console.error('bulkArchiveProducts error:', error.name);
+    return res.status(500).json({ success: false, message: msg(req, 'Не удалось скрыть товары', 'Товарларды жашыруу мүмкүн болгон жок') });
+  }
+};
+
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isActive: false } },
+      { new: true }
+    );
     if (!product) return res.status(404).json({ success: false, message: msg(req, 'Товар не найден', 'Товар табылган жок') });
-    res.json({ success: true, message: msg(req, 'Товар удалён', 'Товар жок кылынды') });
+    res.json({ success: true, product, message: msg(req, 'Товар скрыт из каталога', 'Товар каталогдон жашырылды') });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка удаления товара', 'Товарды жок кылууда ката') });
+  }
+};
+
+exports.setProductVisibility = async (req, res) => {
+  try {
+    if (typeof req.body?.isActive !== 'boolean') {
+      return res.status(400).json({ success: false, message: msg(req, 'Укажите состояние товара', 'Товардын абалын көрсөтүңүз') });
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isActive: req.body.isActive } },
+      { new: true, runValidators: true }
+    ).populate(['category', 'brand']);
+
+    if (!product) return res.status(404).json({ success: false, message: msg(req, 'Товар не найден', 'Товар табылган жок') });
+    return res.json({ success: true, product });
+  } catch (error) {
+    console.error('setProductVisibility error:', error.name);
+    return res.status(500).json({ success: false, message: msg(req, 'Не удалось изменить видимость товара', 'Товардын көрүнүшүн өзгөртүү мүмкүн болгон жок') });
   }
 };
 
 // ─── Inventar yangilash (Admin) / Update stock + price ──────────
 exports.updateStock = async (req, res) => {
   try {
-    const { variants, price } = req.body;
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ success: false, message: msg(req, 'Товар не найден', 'Товар табылган жок') });
-
+    const { variants, price, expectedUpdatedAt } = req.body;
+    const updatedAt = new Date(expectedUpdatedAt);
+    if (!Number.isFinite(updatedAt.getTime())) {
+      return res.status(400).json({ success: false, message: msg(req, 'Обновите страницу склада и повторите', 'Кампаны жаңылап, кайра аракет кылыңыз') });
+    }
+    const updates = {};
     if (Array.isArray(variants)) {
-      product.variants = variants.map(({ size, color, stock }) => ({
-        size, color: color || '', stock: Number(stock) || 0,
-      }));
+      const parsed = variants.map(({ size, color, stock }) => ({ size, color: color || '', stock: Number(stock) }));
+      const keys = new Set();
+      for (const variant of parsed) {
+        const key = `${variant.size}:${variant.color}`;
+        if (!variant.size || !Number.isInteger(variant.stock) || variant.stock < 0 || keys.has(key)) {
+          return res.status(400).json({ success: false, message: msg(req, 'Проверьте размеры и остатки', 'Өлчөмдөрдү жана калдыктарды текшериңиз') });
+        }
+        keys.add(key);
+      }
+      updates.variants = parsed;
     }
-    if (price !== undefined && Number(price) >= 0) {
-      product.price = Number(price);
+    if (price !== undefined) {
+      const parsedPrice = Number(price);
+      if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+        return res.status(400).json({ success: false, message: msg(req, 'Некорректная цена', 'Баасы туура эмес') });
+      }
+      updates.price = parsedPrice;
+    }
+    const product = await Product.findOneAndUpdate(
+      { _id: req.params.id, updatedAt },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+    if (!product) {
+      const exists = await Product.exists({ _id: req.params.id });
+      if (exists) {
+        return res.status(409).json({ success: false, message: msg(req, 'Остатки изменились. Обновите склад и повторите', 'Калдык өзгөрдү. Кампаны жаңылап, кайра аракет кылыңыз') });
+      }
+      return res.status(404).json({ success: false, message: msg(req, 'Товар не найден', 'Товар табылган жок') });
     }
 
-    await product.save();
     res.json({ success: true, product });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка обновления склада', 'Кампарды жаңыртууда ката') });

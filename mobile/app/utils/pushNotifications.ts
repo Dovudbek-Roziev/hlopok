@@ -8,18 +8,18 @@ const isExpoGo =
 
 const TEXTS = {
   ru: {
-    title: '🔔 Включите уведомления',
-    message:
-      'Уведомления нужны, чтобы:\n\n• Вы знали статус вашего заказа\n• Получали информацию об акциях и скидках\n• Не пропускали важные новости магазина\n\nПожалуйста, разрешите уведомления в настройках.',
+    title: 'Включить уведомления?',
+    message: 'Уведомления сообщат об изменении статуса заказа и важных новостях магазина.',
     settings: 'Открыть настройки',
     cancel: 'Позже',
+    channel: 'Заказы и новости',
   },
   ky: {
-    title: '🔔 Билдирүүлөрдү жандырыңыз',
-    message:
-      'Билдирүүлөр зарыл, себеби:\n\n• Буйрутмаңыздын абалын билесиз\n• Акциялар жана арзандатуулар жөнүндө кабар аласыз\n• Дүкөндүн маанилүү жаңылыктарын өткөрүп жибербейсиз\n\nАдалыктар жөндөөсүнөн билдирүүлөргө уруксат бериңиз.',
+    title: 'Билдирмелерди күйгүзөсүзбү?',
+    message: 'Билдирмелер буйрутманын абалы жана дүкөндүн маанилүү жаңылыктары тууралуу кабарлайт.',
     settings: 'Жөндөөлөрдү ачуу',
     cancel: 'Кийинчерээк',
+    channel: 'Буйрутмалар жана жаңылыктар',
   },
 };
 
@@ -36,69 +36,44 @@ export const registerForPushNotifications = async (lang = 'ru'): Promise<string 
 
   try {
     const Notifications = await import('expo-notifications');
-
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert:  true,
-        shouldPlaySound:  true,
-        shouldSetBadge:   true,
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
         shouldShowBanner: true,
-        shouldShowList:   true,
+        shouldShowList: true,
       }),
     });
 
-    const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
-
-    if (existingStatus === 'granted') {
-      // Ruxsat bor — token olamiz
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('orders', {
-          name: 'Заказы / Буйрутмалар',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FFD700',
-          sound: 'default',
-        });
-      }
-      const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ??
-        Constants.easConfig?.projectId;
-      const token = await Notifications.getExpoPushTokenAsync(
-        projectId ? { projectId } : {}
-      );
-      return token.data;
-    }
-
-    if (canAskAgain) {
-      // Tizim dialogi chiqarish
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        // Rad etdi — tushuntirish alertini ko'rsatish
+    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      if (!canAskAgain) {
         showEducationalAlert(lang);
         return null;
       }
-
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('orders', {
-          name: 'Заказы / Буйрутмалар',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FFD700',
-          sound: 'default',
-        });
+      const requested = await Notifications.requestPermissionsAsync();
+      if (requested.status !== 'granted') {
+        showEducationalAlert(lang);
+        return null;
       }
-      const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ??
-        Constants.easConfig?.projectId;
-      const token = await Notifications.getExpoPushTokenAsync(
-        projectId ? { projectId } : {}
-      );
-      return token.data;
     }
 
-    // Doimiy rad etilgan — sozlamalarga yo'naltir
-    showEducationalAlert(lang);
-    return null;
+    if (Platform.OS === 'android') {
+      const t = TEXTS[lang as keyof typeof TEXTS] || TEXTS.ru;
+      await Notifications.setNotificationChannelAsync('orders', {
+        name: t.channel,
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FFD700',
+        sound: 'default',
+      });
+    }
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    const token = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : {});
+    return token.data;
   } catch {
     return null;
   }
@@ -107,27 +82,45 @@ export const registerForPushNotifications = async (lang = 'ru'): Promise<string 
 export const savePushTokenToServer = async (token: string) => {
   try {
     await api.put('/auth/push-token', { token });
-  } catch {}
+  } catch {
+    // Push delivery is optional; an API failure must not interrupt app use.
+  }
 };
 
 export const addNotificationListeners = (
-  onReceived: () => void,
-  onResponse: (orderId: string) => void,
+  onReceived: (orderId?: string) => void,
+  onResponse: (destination: { orderId?: string; screen?: string }) => void,
 ) => {
   if (isExpoGo) return () => {};
 
-  let receivedSub: any;
-  let responseSub: any;
+  let cancelled = false;
+  let receivedSub: { remove: () => void } | undefined;
+  let responseSub: { remove: () => void } | undefined;
+  const handled = new Set<string>();
 
   import('expo-notifications').then(Notifications => {
-    receivedSub = Notifications.addNotificationReceivedListener(onReceived);
-    responseSub = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data as any;
-      if (data?.orderId) onResponse(data.orderId);
+    if (cancelled) return;
+    const handleResponse = (response: { notification: { request: { identifier: string; content: { data?: Record<string, unknown> } } } }) => {
+      const id = response.notification.request.identifier;
+      if (handled.has(id)) return;
+      const data = response.notification.request.content.data as { orderId?: string; screen?: string };
+      if (!data?.orderId && data?.screen !== 'BonusCard' && data?.screen !== 'HomeTab') return;
+      handled.add(id);
+      onResponse(data);
+      Notifications.clearLastNotificationResponseAsync().catch(() => {});
+    };
+    receivedSub = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data as { orderId?: string };
+      onReceived(data?.orderId);
     });
-  });
+    responseSub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    Notifications.getLastNotificationResponseAsync()
+      .then(response => { if (!cancelled && response) handleResponse(response); })
+      .catch(() => {});
+  }).catch(() => {});
 
   return () => {
+    cancelled = true;
     receivedSub?.remove();
     responseSub?.remove();
   };

@@ -84,7 +84,7 @@ const SizeGuideModal = ({ visible, onClose }: Props) => {
                   alignItems="center"
                 >
                   <Text flex={1.2} fontWeight="600" fontSize={13} color={Colors.black}>
-                    {row.size}
+                    {isKy ? row.size.replace(' мес', ' ай').replace(' года', ' жаш').replace(' лет', ' жаш') : row.size}
                   </Text>
                   <Text flex={2} fontSize={13} color={Colors.grayDark}>
                     {isKy ? row.age_ky : row.age_ru}

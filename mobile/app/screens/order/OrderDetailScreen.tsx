@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { Alert, ScrollView, TouchableOpacity, Modal, Share } from 'react-native';
 import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -195,6 +196,7 @@ const ReceiptModal = ({ order, onClose }: { order: any; onClose: () => void }) =
 };
 
 const OrderDetailScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors       = useColors();
   const { t, i18n } = useTranslation();
   const navigation   = useNavigation<any>();
@@ -238,7 +240,7 @@ const OrderDetailScreen = () => {
     return (
       <ScreenWrapper>
       <YStack flex={1} backgroundColor={Colors.bg}>
-        <XStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
+        <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <ChevronLeft color={Colors.black} size={24} />
           </TouchableOpacity>
@@ -263,7 +265,7 @@ const OrderDetailScreen = () => {
     <ScreenWrapper>
     <YStack flex={1} backgroundColor={Colors.bg}>
       {/* Header */}
-      <XStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
+      <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft color={Colors.black} size={24} />
         </TouchableOpacity>
@@ -391,10 +393,12 @@ const OrderDetailScreen = () => {
             <XStack justifyContent="space-between" alignItems="center">
               <XStack alignItems="center" gap={4}>
                 <Star color={Colors.green} size={13} fill={Colors.green} />
-                <Text color={Colors.green} fontSize={13}>{t('orders.bonusEarned')}</Text>
+                <Text color={Colors.green} fontSize={13}>
+                  {t(order.bonusEarnedAt ? 'orders.bonusEarned' : 'orders.bonusPending')}
+                </Text>
               </XStack>
-              <Text color={Colors.green} fontSize={13}>
-                {order.status === 'ready'
+              <Text color={Colors.green} fontSize={13} flexShrink={1} maxWidth="58%" textAlign="right">
+                {order.bonusEarnedAt
                   ? `+${formatPrice(order.bonusEarned)}`
                   : t('orders.bonusEarnedAfterReady')}
               </Text>

@@ -21,10 +21,6 @@ export const formatDateTime = (date: string | Date): string => {
 };
 
 // Initsialni olish (Avatar uchun) / Get initials for avatar
-export const getInitials = (firstName: string, lastName: string): string => {
-  return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
-};
-
 // Telefon raqamni formatlash: 0555123456 → 0555 12 34 56
 export const formatPhone = (phone: string): string => {
   const d = phone.replace(/\D/g, '');

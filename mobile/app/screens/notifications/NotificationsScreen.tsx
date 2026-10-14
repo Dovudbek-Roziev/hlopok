@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,7 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 const NotificationsScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const Colors = useColors();
@@ -97,7 +99,7 @@ const NotificationsScreen = () => {
       {/* Header */}
       <XStack
         backgroundColor={Colors.white}
-        paddingTop={52} paddingBottom={14}
+        paddingTop={headerTopPadding} paddingBottom={14}
         paddingHorizontal={16}
         borderBottomWidth={1} borderBottomColor={Colors.border}
         alignItems="center" justifyContent="space-between"

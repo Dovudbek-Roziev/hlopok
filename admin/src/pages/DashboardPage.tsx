@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { ShoppingCart, TrendingUp, TrendingDown, Users, AlertTriangle, Package, Trash2, Gift, UserPlus, XCircle, Receipt } from 'lucide-react';
+import { ShoppingCart, TrendingUp, TrendingDown, Users, AlertTriangle, Package, Trash2, Gift, UserPlus, XCircle, Receipt, RefreshCw } from 'lucide-react';
 import api from '../api/client';
 import { toast } from '../components/Toast';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -61,7 +61,7 @@ const DashboardPage = () => {
 
   const isMobile = useIsMobile();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard'],
     queryFn:  () => api.get('/orders/dashboard').then(r => r.data.stats),
     refetchInterval: 30000,
@@ -71,6 +71,18 @@ const DashboardPage = () => {
   const topProducts = stats.topProducts || [];
   const growth      = stats.monthGrowth ?? 0;
   const isPositive  = growth >= 0;
+
+  if (isError) {
+    return (
+      <div style={{ ...card, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+        <AlertTriangle size={28} color="#DC2626" />
+        <div style={{ color: '#1A1A1A', fontWeight: 600 }}>{t('common.error')}</div>
+        <button onClick={() => refetch()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer' }}>
+          <RefreshCw size={15} /> {t('common.retry')}
+        </button>
+      </div>
+    );
+  }
 
   const monthlyChart = (stats.monthlyData || []).map((d: any) => {
     const [, m] = d._id.split('-');

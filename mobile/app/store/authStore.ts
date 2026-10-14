@@ -1,10 +1,11 @@
 // Autentifikatsiya global holati / Auth global state (Zustand)
 import { create } from 'zustand';
-import { saveToken, removeToken, saveLang } from '../utils/storage';
+import { saveToken, removeToken, saveLang, getPushToken, removePushToken } from '../utils/storage';
 import { queryClient } from '../utils/queryClient';
 import { useCartStore } from './cartStore';
 import { useAppStore } from './appStore';
 import i18n from '../i18n';
+import { API_URL } from '../utils/config';
 
 interface User {
   _id: string;
@@ -17,11 +18,11 @@ interface User {
   language: 'ru' | 'ky';
   role: string;
   bonusBalance: number;
+  bonusExpiresAt?: string | null;
   totalSaved: number;
   qrCode: string;
   favorites: string[];
   addresses: any[];
-  avatar?: string;
 }
 
 interface AuthState {
@@ -62,6 +63,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    const token = get().token;
+    if (token) {
+      try {
+        const pushToken = await getPushToken();
+        await Promise.race([fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pushToken }),
+        }), new Promise(resolve => setTimeout(resolve, 2000))]);
+      } catch {}
+    }
+    await removePushToken();
     await removeToken();
     set({ user: null, token: null, isAuthenticated: false });
     useCartStore.getState().clearCart();

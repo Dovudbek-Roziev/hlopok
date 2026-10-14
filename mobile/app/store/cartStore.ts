@@ -18,15 +18,15 @@ export interface CartItem {
 interface CartState {
   items: CartItem[];
   addItem:    (item: CartItem) => void;
-  removeItem: (productId: string, size: string, color: string) => void;
-  updateQty:  (productId: string, size: string, color: string, qty: number) => void;
+  removeItem: (productId: string, size: string, color: string, promotionId?: string) => void;
+  updateQty:  (productId: string, size: string, color: string, qty: number, promotionId?: string) => void;
   clearCart:  () => void;
   totalItems: () => number;
   totalPrice: () => number;
 }
 
-const itemKey = (productId: string, size: string, color: string) =>
-  `${productId}_${size}_${color}`;
+const itemKey = (productId: string, size: string, color: string, promotionId?: string) =>
+  `${productId}_${size}_${color}_${promotionId || 'regular'}`;
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -35,24 +35,25 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item) => {
         const items = [...get().items];
-        const key = itemKey(item.productId, item.size, item.color);
-        const existing = items.find(i => itemKey(i.productId, i.size, i.color) === key);
+        const key = itemKey(item.productId, item.size, item.color, item.promotionId);
+        const existing = items.find(i => itemKey(i.productId, i.size, i.color, i.promotionId) === key);
         if (existing) {
-          existing.qty = Math.min(existing.qty + item.qty, item.maxStock);
+          existing.maxStock = item.maxStock;
+          existing.qty = Math.min(existing.qty + item.qty, existing.maxStock);
         } else {
-          items.push(item);
+          items.push({ ...item, qty: Math.min(item.qty, item.maxStock) });
         }
         set({ items });
       },
 
-      removeItem: (productId, size, color) => {
-        set({ items: get().items.filter(i => itemKey(i.productId, i.size, i.color) !== itemKey(productId, size, color)) });
+      removeItem: (productId, size, color, promotionId) => {
+        set({ items: get().items.filter(i => itemKey(i.productId, i.size, i.color, i.promotionId) !== itemKey(productId, size, color, promotionId)) });
       },
 
-      updateQty: (productId, size, color, qty) => {
+      updateQty: (productId, size, color, qty, promotionId) => {
         const items = get().items.map(i =>
-          itemKey(i.productId, i.size, i.color) === itemKey(productId, size, color)
-            ? { ...i, qty: Math.max(1, Math.min(qty, i.maxStock)) }
+          itemKey(i.productId, i.size, i.color, i.promotionId) === itemKey(productId, size, color, promotionId)
+            ? { ...i, qty: Math.max(1, Math.min(qty, Number.isInteger(i.maxStock) ? i.maxStock : i.qty)) }
             : i
         );
         set({ items });

@@ -9,13 +9,17 @@ const initSocket = (io) => {
       const token = socket.handshake.auth?.token;
       if (token) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id).select('role');
+        const user = await User.findById(decoded.id).select('role isActive tokenVersion');
+        if (!user || !user.isActive || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
+          return next(new Error('Unauthorized'));
+        }
         socket.userId = decoded.id;
-        socket.userRole = user?.role;
+        socket.userRole = user.role;
       }
       next();
     } catch {
-      next(); // Token yo'q bo'lsa ham ulanishga ruxsat / Allow connection without token
+      if (socket.handshake.auth?.token) return next(new Error('Unauthorized'));
+      next(); // Guest sockets remain available for public events.
     }
   });
 

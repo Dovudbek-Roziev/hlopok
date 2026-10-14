@@ -1,4 +1,5 @@
 import React from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { TouchableOpacity, Linking, ScrollView, View } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -89,6 +90,7 @@ const SectionLabel = ({ title }: { title: string }) => {
 // ─────────────────────────────────────────────────────────────
 
 const ContactsScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -96,7 +98,7 @@ const ContactsScreen = () => {
   return (
   <ScreenWrapper>
   <YStack flex={1} backgroundColor={Colors.bg}>
-    <YStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={20} paddingBottom={16}>
+    <YStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={20} paddingBottom={16}>
       <XStack alignItems="center" gap={12}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft color={Colors.black} size={24} />

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, Minus, Check } from 'lucide-react';
 import api from '../api/client';
+import { fetchAllAdminProducts } from '../api/products';
 import { toast } from '../components/Toast';
 import { PRESET_COLORS, colorName } from '../utils/colors';
 import { sizeLabelBoth, sizeLabel } from '../utils/sizeLabel';
@@ -12,14 +13,15 @@ const SIZES = ['1 мес','3 мес','6 мес','9 мес','12 мес','18 ме�
 type Variant = { size: string; color: string; stock: number };
 
 const buildVariants = (existing: Variant[], colors: string[]): Variant[] => {
+  const sizes = [...new Set([...SIZES, ...existing.map(v => v.size)])];
   if (colors.length === 0) {
-    return SIZES.map(size => ({
+    return sizes.map(size => ({
       size, color: '',
       stock: existing.find(v => v.size === size && v.color === '')?.stock ?? 0,
     }));
   }
   const rows: Variant[] = [];
-  SIZES.forEach(size => colors.forEach(color => {
+  sizes.forEach(size => colors.forEach(color => {
     rows.push({ size, color, stock: existing.find(v => v.size === size && v.color === color)?.stock ?? 0 });
   }));
   return rows;
@@ -37,18 +39,27 @@ const InventoryPage = () => {
 
   const { data: products } = useQuery({
     queryKey: ['inventory'],
-    queryFn: () => api.get('/products?limit=500&isActive=all').then(r => r.data.products),
+    queryFn: fetchAllAdminProducts,
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, variants, price }: any) => api.put(`/products/${id}/stock`, { variants, price }),
+    mutationFn: ({ id, variants, price, expectedUpdatedAt }: any) =>
+      api.put(`/products/${id}/stock`, { variants, price, expectedUpdatedAt }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       setEditing(null);
       toast.success(t('inventory.saved'));
     },
-    onError: () => toast.error(t('common.error')),
+    onError: (error: any) => {
+      if (error.response?.status === 404 || error.response?.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ['inventory'] });
+        setEditing(null);
+        toast.error(t('inventory.stockConflict'));
+      } else {
+        toast.error(t('common.error'));
+      }
+    },
   });
 
   const openEdit = (p: any) => {
@@ -80,6 +91,10 @@ const InventoryPage = () => {
     setVariants(buildVariants(variants, next));
   };
   const removeColor = (c: string) => {
+    if (variants.some(v => v.color === c && v.stock > 0)) {
+      toast.error(t('inventory.colorHasStock'));
+      return;
+    }
     const next = colors.filter(x => x !== c);
     setColors(next);
     setVariants(buildVariants(variants, next));
@@ -87,6 +102,7 @@ const InventoryPage = () => {
 
   const totalStock = (p: any) => (p.variants || []).reduce((a: number, v: any) => a + (v.stock || 0), 0);
   const editTotal  = variants.reduce((a, v) => a + (v.stock || 0), 0);
+  const editSizes = [...new Set([...SIZES, ...variants.map(v => v.size)])];
 
   const filtered = (products || []).filter((p: any) => {
     const q = search.toLowerCase();
@@ -307,8 +323,8 @@ const InventoryPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {SIZES.map((size, si) => (
-                          <tr key={size} style={{ borderBottom: si < SIZES.length - 1 ? '1px solid #F3F4F6' : 'none', backgroundColor: si % 2 === 0 ? '#fff' : '#F9FAFB' }}>
+                        {editSizes.map((size, si) => (
+                          <tr key={size} style={{ borderBottom: si < editSizes.length - 1 ? '1px solid #F3F4F6' : 'none', backgroundColor: si % 2 === 0 ? '#fff' : '#F9FAFB' }}>
                             <td style={{ padding: '10px 14px', fontSize: 12, color: '#1A1A1A', fontWeight: 600, whiteSpace: 'nowrap' }}>{sizeLabelBoth(size)}</td>
                             {colors.map(color => {
                               const v = variants.find(x => x.size === size && x.color === color);
@@ -345,7 +361,9 @@ const InventoryPage = () => {
                 {t('inventory.cancel')}
               </button>
               <button
-                onClick={() => updateMutation.mutate({ id: editing._id, variants, price: Number(price) || 0 })}
+                onClick={() => updateMutation.mutate({
+                  id: editing._id, variants, price: Number(price) || 0, expectedUpdatedAt: editing.updatedAt,
+                })}
                 disabled={updateMutation.isPending}
                 style={{ flex: 2, padding: '12px', backgroundColor: '#16A34A', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', color: '#fff', fontSize: 14, opacity: updateMutation.isPending ? 0.7 : 1 }}>
                 {updateMutation.isPending ? t('inventory.saving') : t('inventory.save')}

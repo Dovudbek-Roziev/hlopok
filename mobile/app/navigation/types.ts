@@ -2,7 +2,7 @@
 export type AuthStackParamList = {
   Login:          undefined;
   OTPVerify:      { phone: string };
-  Register:       { phone?: string; verified?: boolean } | undefined;
+  Register:       { phone?: string; registrationToken?: string } | undefined;
   ForgotPassword: undefined;
 };
 

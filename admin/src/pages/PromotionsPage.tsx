@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Plus, Edit2, Trash2, X, Search, Package } from 'lucide-react';
 import api from '../api/client';
+import { fetchAllAdminProducts } from '../api/products';
 import { toast } from '../components/Toast';
 import { Confirm } from '../components/Confirm';
 
@@ -27,7 +28,7 @@ const ProductPicker = ({ onClose, onAdd, alreadySelected }: {
 
   const { data: products } = useQuery({
     queryKey: ['promo-products-picker'],
-    queryFn: () => api.get('/products?limit=500&isActive=all').then(r => r.data.products),
+    queryFn: fetchAllAdminProducts,
   });
 
   const filtered = (products || []).filter((p: any) =>

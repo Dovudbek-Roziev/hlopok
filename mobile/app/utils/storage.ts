@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOKEN_KEY = 'hlopok_token';
 const LANG_KEY  = 'hlopok_lang';
+const PUSH_TOKEN_KEY = 'hlopok_push_token';
 
 export const saveLang = (lang: string) => AsyncStorage.setItem(LANG_KEY, lang);
 export const getLang  = () => AsyncStorage.getItem(LANG_KEY);
@@ -19,3 +20,7 @@ export const getToken = async (): Promise<string | null> => {
 export const removeToken = async () => {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 };
+
+export const savePushToken = (token: string) => SecureStore.setItemAsync(PUSH_TOKEN_KEY, token);
+export const getPushToken = () => SecureStore.getItemAsync(PUSH_TOKEN_KEY);
+export const removePushToken = () => SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);

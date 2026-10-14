@@ -1,5 +1,6 @@
 // Katalog ekrani / Catalog screen
 import React, { useState, useEffect, useRef } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, TouchableOpacity, TextInput, StyleSheet, Pressable, Animated } from 'react-native';
 import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +21,7 @@ const SORT_KEYS = [
 ];
 
 const CatalogScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
@@ -144,7 +146,7 @@ const CatalogScreen = () => {
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
     <YStack flex={1} backgroundColor={Colors.bg}>
       {/* Search bar */}
-      <YStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={12}>
+      <YStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={12}>
         <XStack alignItems="center" backgroundColor={Colors.white} borderWidth={1} borderColor={Colors.border}
           borderRadius={12} paddingHorizontal={12} height={46} gap={8}>
           <Search color={Colors.gray} size={18} />

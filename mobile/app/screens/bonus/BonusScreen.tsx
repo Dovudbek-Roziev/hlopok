@@ -1,30 +1,44 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
 import { YStack, XStack, Text, Image, Spinner } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
+import HlopokLogo from '../../components/HlopokLogo';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ShoppingCart, CreditCard, Gift, Clock, RotateCcw, Info, Star } from 'lucide-react-native';
 import { bonusApi } from '../../api/categories';
+import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../theme/useColors';
 import { formatPrice, formatDate } from '../../utils/format';
 
 const TX_CONFIG: Record<string, { icon: any; bg: string; color: string; sign: string }> = {
   earned:    { icon: ShoppingCart, bg: '#DCFCE7', color: '#16A34A', sign: '+' },
-  used:      { icon: CreditCard,   bg: '#FEE2E2', color: '#DC2626', sign: '−' },
+  used:      { icon: CreditCard,   bg: '#FEE2E2', color: '#DC2626', sign: '-' },
   refund:    { icon: RotateCcw,    bg: '#DBEAFE', color: '#2563EB', sign: '+' },
   admin_add: { icon: Gift,         bg: '#FEF9C3', color: '#CA8A04', sign: '+' },
-  expired:   { icon: Clock,        bg: '#F3F4F6', color: '#9CA3AF', sign: '−' },
+  expired:   { icon: Clock,        bg: '#F3F4F6', color: '#9CA3AF', sign: '-' },
 };
 
 const BonusScreen = () => {
   const Colors     = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
-  const { user }    = useAuthStore();
+  const insets      = useSafeAreaInsets();
+  const { user, updateUser } = useAuthStore();
+  const queryClient = useQueryClient();
   const lang        = i18n.language === 'ky' ? 'ky' : 'ru';
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    authApi.getMe().then(response => {
+      if (active) updateUser(response.data.user);
+    }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ['bonus-history'] });
+    return () => { active = false; };
+  }, [queryClient, updateUser]));
 
   const { data: txList, isLoading } = useQuery({
     queryKey: ['bonus-history'],
@@ -37,10 +51,22 @@ const BonusScreen = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  const bonusPct     = bonusSettings?.bonusPercent ?? 5;
+  const qrQuery = useQuery({
+    queryKey: ['bonus-qr', user?._id],
+    queryFn: () => authApi.getMe().then(r => r.data.user),
+    enabled: !!user && !user.qrCode,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (qrQuery.data) updateUser(qrQuery.data);
+  }, [qrQuery.data, updateUser]);
+
+  const bonusWindowOpen = !user?.bonusExpiresAt || new Date(user.bonusExpiresAt) > new Date();
+  const bonusPct     = bonusWindowOpen ? (bonusSettings?.bonusPercent ?? 5) : 0;
   const transactions = txList || [];
   const fullName     = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Хлопок';
-  const balance      = user?.bonusBalance || 0;
+  const balance      = bonusWindowOpen ? (user?.bonusBalance || 0) : 0;
   const totalSaved   = user?.totalSaved   || 0;
 
   const howItWorks = [
@@ -54,7 +80,7 @@ const BonusScreen = () => {
     <YStack flex={1} backgroundColor={Colors.bg}>
 
       {/* Header */}
-      <XStack paddingTop={52} paddingHorizontal={16} paddingBottom={10} alignItems="center" gap={10}>
+      <XStack paddingTop={Math.max(insets.top, 8)} paddingHorizontal={16} paddingBottom={10} alignItems="center" gap={10}>
         <TouchableOpacity onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Profile')}
           style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white,
             alignItems: 'center', justifyContent: 'center',
@@ -69,40 +95,55 @@ const BonusScreen = () => {
         {/* ── Bonus Card ── */}
         <YStack paddingHorizontal={16} paddingBottom={16} paddingTop={4}>
           <View style={{
-            borderRadius: 24, overflow: 'hidden',
-            shadowColor: '#0F3460', shadowOpacity: 0.4, shadowRadius: 20,
+            borderRadius: 20, overflow: 'hidden',
+            shadowColor: '#0F3460', shadowOpacity: 0.24, shadowRadius: 14,
             shadowOffset: { width: 0, height: 10 }, elevation: 14,
           }}>
             {/* Dark blue card */}
-            <View style={{ backgroundColor: '#0F3460', padding: 24 }}>
+            <View style={{ backgroundColor: '#0F3460', padding: 20 }}>
 
               {/* Top row */}
-              <XStack justifyContent="space-between" alignItems="center" marginBottom={24}>
-                <YStack>
-                  <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, letterSpacing: 2, marginBottom: 2 }}>
-                    ХЛОПОК
-                  </Text>
-                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>
-                    {t('bonus.title').toUpperCase()}
-                  </Text>
-                </YStack>
+              <XStack justifyContent="space-between" alignItems="center" marginBottom={18}>
+                <HlopokLogo size="compact" tone="light" />
                 <XStack backgroundColor="rgba(255,215,0,0.15)" borderRadius={20}
                   paddingHorizontal={12} paddingVertical={5} alignItems="center" gap={5}
                   style={{ borderWidth: 1, borderColor: 'rgba(255,215,0,0.3)' }}>
                   <Star color={Colors.yellow} size={12} fill={Colors.yellow} />
                   <Text style={{ color: Colors.yellow, fontSize: 12, fontWeight: '700' }}>
-                    {t('bonus.statusGold')}
+                    {bonusPct}% {t('bonus.cashback')}
                   </Text>
                 </XStack>
               </XStack>
 
               {/* QR code */}
-              <YStack alignItems="center" marginBottom={24}>
-                {user?.qrCode ? (
-                  <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 12,
+              <YStack alignItems="center" marginBottom={18}>
+                {user?.qrCode || qrQuery.data?.qrCode ? (
+                  <View style={{ width: 196, height: 196, backgroundColor: '#fff', borderRadius: 12, padding: 8,
+                    alignItems: 'center', justifyContent: 'center',
                     shadowColor: Colors.yellow, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 }}>
-                    <Image source={{ uri: user.qrCode }} width={140} height={140} borderRadius={8} />
+                    <Image source={{ uri: user?.qrCode || qrQuery.data?.qrCode }} width={180} height={180} />
                   </View>
+                ) : !user ? (
+                  <TouchableOpacity onPress={() => navigation.navigate('AuthNavigator')}
+                    style={{ width: 164, minHeight: 164, backgroundColor: 'rgba(255,255,255,0.06)',
+                      borderRadius: 18, alignItems: 'center', justifyContent: 'center', padding: 14,
+                      borderWidth: 1.5, borderColor: 'rgba(255,215,0,0.2)' }}>
+                    <Text style={{ color: Colors.yellow, fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                      {t('auth.login')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : qrQuery.isError || qrQuery.isSuccess ? (
+                  <TouchableOpacity onPress={() => qrQuery.refetch()} disabled={qrQuery.isFetching}
+                    style={{ width: 164, minHeight: 164, backgroundColor: 'rgba(255,255,255,0.06)',
+                      borderRadius: 18, alignItems: 'center', justifyContent: 'center', padding: 14,
+                      borderWidth: 1.5, borderColor: 'rgba(255,215,0,0.2)' }}>
+                    <Text style={{ color: '#fff', fontSize: 12, textAlign: 'center', marginBottom: 10 }}>
+                      {t('bonus.qrLoadError')}
+                    </Text>
+                    <Text style={{ color: Colors.yellow, fontSize: 13, fontWeight: '700' }}>
+                      {qrQuery.isFetching ? t('bonus.qrLoading') : t('common.retry')}
+                    </Text>
+                  </TouchableOpacity>
                 ) : (
                   <View style={{ width: 164, height: 164, backgroundColor: 'rgba(255,255,255,0.06)',
                     borderRadius: 18, alignItems: 'center', justifyContent: 'center',

@@ -1,12 +1,91 @@
 // Buyurtma kontrolleri / Order controller
 const Order = require('../models/Order');
 const Review = require('../models/Review');
+const mongoose = require('mongoose');
 const msg = require('../utils/msg');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const Promotion = require('../models/Promotion');
 const { BonusTransaction, BonusSettings } = require('../models/Bonus');
 const { sendOrderStatusPush } = require('../utils/pushNotification');
+const { grantReadyOrderBonus, cancelOrderAndRestore } = require('../services/orderLifecycle');
+const MAX_ORDER_ITEMS = 50;
+const MAX_ITEM_QTY = 99;
+
+
+const rollbackOrderSideEffects = async ({ decremented = [], promoDecremented = [] }) => {
+  let rollbackError;
+  const pendingStock = [];
+  for (const d of decremented) {
+    try {
+      const result = await Product.updateOne(
+        { _id: d.productId },
+        { $inc: { 'variants.$[v].stock': d.qty, totalSold: -d.qty } },
+        { arrayFilters: [{ 'v.size': d.size, 'v.color': d.color }] }
+      );
+      if (result.modifiedCount === 0) {
+        pendingStock.push(d);
+        rollbackError ||= new Error('Stock rollback did not match a product variant');
+      }
+    } catch (error) {
+      pendingStock.push(d);
+      rollbackError ||= error;
+    }
+  }
+  decremented.splice(0, decremented.length, ...pendingStock);
+  const pendingPromotions = [];
+  for (const p of promoDecremented) {
+    try {
+      const result = await Promotion.updateOne(
+        { _id: p.promotionId, 'products.product': p.productId },
+        { $inc: { 'products.$.limit': p.qty } }
+      );
+      if (result.modifiedCount === 0) {
+        pendingPromotions.push(p);
+        rollbackError ||= new Error('Promotion rollback did not match a product');
+      }
+    } catch (error) {
+      pendingPromotions.push(p);
+      rollbackError ||= error;
+    }
+  }
+  promoDecremented.splice(0, promoDecremented.length, ...pendingPromotions);
+  if (rollbackError) throw rollbackError;
+};
+
+const normalizeOrderItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { error: 'empty' };
+  }
+  if (items.length > MAX_ORDER_ITEMS) {
+    return { error: 'too_many' };
+  }
+
+  const byKey = new Map();
+  for (const raw of items) {
+    const productId = String(raw?.productId || '').trim();
+    const promotionId = raw?.promotionId ? String(raw.promotionId).trim() : '';
+    const size = String(raw?.size || '').trim();
+    const color = String(raw?.color || '').trim();
+    const qty = Number(raw?.qty);
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) return { error: 'bad_item' };
+    if (promotionId && !mongoose.Types.ObjectId.isValid(promotionId)) return { error: 'bad_item' };
+    if (!size || size.length > 30 || color.length > 40) return { error: 'bad_item' };
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_ITEM_QTY) return { error: 'bad_qty' };
+
+    const key = `${productId}:${size}:${color}:${promotionId}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.qty += qty;
+      if (existing.qty > MAX_ITEM_QTY) return { error: 'bad_qty' };
+    } else {
+      byKey.set(key, { productId, size, color, qty, promotionId: promotionId || undefined });
+    }
+  }
+
+  return { items: [...byKey.values()] };
+};
 
 // Mahsulot uchun aksiya chegirmasini xavfsiz tekshirish / Securely verify a promotion discount for a product
 // Mijoz yuborgan promotionId'ga ishonmaymiz — aksiyani bazadan tekshirib, faqat haqiqatan
@@ -32,8 +111,20 @@ const getVerifiedDiscountPercent = async (promotionId, productId) => {
 
 // ─── Buyurtma yaratish / Create order ────────────────────────────
 exports.createOrder = async (req, res) => {
+  const decremented = [];
+  const promoDecremented = [];
+  let createdOrderId;
+  let bonusDebitApplied = 0;
+  let sideEffectsCommitted = false;
+  const clientRequestId = req.body?.clientRequestId;
   try {
     const { items, contactName, contactPhone, bonusUsed, note, deliveryMethod, deliveryAddress, paymentMethod } = req.body;
+
+    if (typeof clientRequestId !== 'string' || !/^[a-zA-Z0-9_-]{16,64}$/.test(clientRequestId)) {
+      return res.status(400).json({ success: false, message: msg(req, 'Некорректный запрос заказа', 'Буйрутма сурамы туура эмес') });
+    }
+    const existingOrder = await Order.findOne({ user: req.user._id, clientRequestId });
+    if (existingOrder) return res.json({ success: true, order: existingOrder });
 
     if (!contactName || !contactName.trim()) {
       return res.status(400).json({ success: false, message: msg(req, 'Введите ваше имя', 'Атыңызды киргизиңиз') });
@@ -41,27 +132,24 @@ exports.createOrder = async (req, res) => {
     if (!contactPhone || contactPhone.replace(/\D/g, '').length < 10) {
       return res.status(400).json({ success: false, message: msg(req, 'Введите правильный номер телефона', 'Туура телефон номерин киргизиңиз') });
     }
-    if (!items || !Array.isArray(items) || items.length === 0) {
+    const normalized = normalizeOrderItems(items);
+    if (normalized.error === 'empty') {
       return res.status(400).json({ success: false, message: msg(req, 'Корзина пуста', 'Себет бош') });
+    }
+    if (normalized.error) {
+      return res.status(400).json({ success: false, message: msg(req, 'Проверьте товары и количество', 'Товарларды жана санын текшериңиз') });
     }
 
     // Narxlarni tekshirish va inventarni kamaytirish
     // Verify prices and decrement inventory
     let subtotal = 0;
     const orderItems = [];
-    const decremented = []; // rollback uchun
 
-    for (const item of items) {
+    for (const item of normalized.items) {
       const product = await Product.findById(item.productId);
       if (!product || !product.isActive) {
         // Rollback: avval kamaytirganlarni qaytarish
-        for (const d of decremented) {
-          await Product.updateOne(
-            { _id: d.productId },
-            { $inc: { 'variants.$[v].stock': d.qty, totalSold: -d.qty } },
-            { arrayFilters: [{ 'v.size': d.size, 'v.color': d.color }] }
-          );
-        }
+        await rollbackOrderSideEffects({ decremented, promoDecremented });
         return res.status(400).json({ success: false, message: msg(req, `Товар не найден: ${item.productId}`, `Товар табылган жок: ${item.productId}`) });
       }
 
@@ -70,13 +158,7 @@ exports.createOrder = async (req, res) => {
       if (!variant || variant.stock < item.qty) {
         const name = req.lang === 'ky' ? product.name_ky : product.name_ru;
         // Rollback
-        for (const d of decremented) {
-          await Product.updateOne(
-            { _id: d.productId },
-            { $inc: { 'variants.$[v].stock': d.qty, totalSold: -d.qty } },
-            { arrayFilters: [{ 'v.size': d.size, 'v.color': d.color }] }
-          );
-        }
+        await rollbackOrderSideEffects({ decremented, promoDecremented });
         return res.status(400).json({
           success: false,
           message: msg(req, `"${product.name_ru}" — размер "${item.size}" нет в наличии`, `"${name}" — "${item.size}" өлчөмү жок`),
@@ -99,13 +181,7 @@ exports.createOrder = async (req, res) => {
       if (stockResult.modifiedCount === 0) {
         const name = req.lang === 'ky' ? product.name_ky : product.name_ru;
         // Rollback
-        for (const d of decremented) {
-          await Product.updateOne(
-            { _id: d.productId },
-            { $inc: { 'variants.$[v].stock': d.qty, totalSold: -d.qty } },
-            { arrayFilters: [{ 'v.size': d.size, 'v.color': d.color }] }
-          );
-        }
+        await rollbackOrderSideEffects({ decremented, promoDecremented });
         return res.status(400).json({
           success: false,
           message: msg(req, `"${product.name_ru}" — размер "${item.size}" закончился`, `"${name}" — "${item.size}" өлчөмү бүтүп калды`),
@@ -113,18 +189,38 @@ exports.createOrder = async (req, res) => {
       }
       decremented.push({ productId: product._id, size: item.size, color: itemColor, qty: item.qty });
 
-      // Aksiya limitini kamaytirish (faqat limit belgilangan bo'lsa)
-      // Decrement promotion limit only if limit is set (not null/unlimited)
-      if (item.promotionId) {
-        await Promotion.updateOne(
-          { _id: item.promotionId, 'products.product': product._id, 'products.limit': { $gt: 0 } },
-          { $inc: { 'products.$.limit': -item.qty } }
-        );
-      }
-
       // Aksiya chegirmasini xavfsiz tekshirish va narxni hisoblash
       // Verify the promotion server-side and compute the real price
       const discountPercent = await getVerifiedDiscountPercent(item.promotionId, product._id);
+      if (discountPercent > 0 && item.promotionId) {
+        const now = new Date();
+        const promoLimitResult = await Promotion.updateOne(
+          {
+            _id: item.promotionId,
+            isActive: true,
+            startDate: { $lte: now },
+            endDate: { $gte: now },
+            products: { $elemMatch: { product: product._id, limit: { $ne: null, $gte: item.qty } } },
+          },
+          { $inc: { 'products.$.limit': -item.qty } }
+        );
+
+        if (promoLimitResult.modifiedCount > 0) {
+          promoDecremented.push({ promotionId: item.promotionId, productId: product._id, qty: item.qty });
+        } else {
+          const unlimitedPromo = await Promotion.exists({
+            _id: item.promotionId,
+            isActive: true,
+            startDate: { $lte: now },
+            endDate: { $gte: now },
+            products: { $elemMatch: { product: product._id, limit: null } },
+          });
+          if (!unlimitedPromo) {
+            await rollbackOrderSideEffects({ decremented, promoDecremented });
+            return res.status(400).json({ success: false, message: msg(req, 'Лимит акции закончился', 'Акциянын лимити бүттү') });
+          }
+        }
+      }
       const itemPrice = discountPercent > 0
         ? Math.round(product.price * (1 - discountPercent / 100))
         : product.price;
@@ -139,15 +235,30 @@ exports.createOrder = async (req, res) => {
         size: item.size,
         color: item.color || '',
         qty: item.qty,
-        promotionId: item.promotionId || undefined,
+        promotionId: discountPercent > 0 ? item.promotionId : undefined,
       });
     }
 
     // Bonus tekshirish / Check bonus
-    const usedBonus = Math.max(0, Number(bonusUsed) || 0);
+    const rawBonus = bonusUsed === undefined || bonusUsed === null || bonusUsed === '' ? 0 : Number(bonusUsed);
+    if (!Number.isFinite(rawBonus) || rawBonus < 0 || !Number.isInteger(rawBonus)) {
+      await rollbackOrderSideEffects({ decremented, promoDecremented });
+      return res.status(400).json({ success: false, message: msg(req, 'Проверьте сумму бонусов', 'Бонустардын суммасын текшериңиз') });
+    }
+    const usedBonus = rawBonus;
+    if (usedBonus > subtotal) {
+      await rollbackOrderSideEffects({ decremented, promoDecremented });
+      return res.status(400).json({ success: false, message: msg(req, 'Бонусы не могут быть больше суммы заказа', 'Бонустар буйрутманын суммасынан көп болбошу керек') });
+    }
+    const settings = await BonusSettings.findOne() || { bonusPercent: 5, expiryDays: 90 };
+    const buyer = await User.findById(req.user._id);
+    const bonusExpiresAt = buyer?.bonusExpiresAt || (buyer?.createdAt
+      ? new Date(buyer.createdAt.getTime() + settings.expiryDays * 24 * 60 * 60 * 1000)
+      : null);
+    const bonusWindowOpen = !!bonusExpiresAt && bonusExpiresAt > new Date();
     if (usedBonus > 0) {
-      const user = await User.findById(req.user._id);
-      if (!user || user.bonusBalance < usedBonus) {
+      if (!buyer || !bonusWindowOpen || buyer.bonusBalance < usedBonus) {
+        await rollbackOrderSideEffects({ decremented, promoDecremented });
         return res.status(400).json({ success: false, message: msg(req, 'Недостаточно бонусов', 'Бонустар жетишсиз') });
       }
     }
@@ -155,25 +266,26 @@ exports.createOrder = async (req, res) => {
     const total = Math.max(0, subtotal - usedBonus);
 
     // Bonus sozlamalari / Bonus settings
-    const settings = await BonusSettings.findOne() || { bonusPercent: 5, expiryDays: 90 };
     // Bonus to'liq summadan (subtotal) hisoblanadi, bonus chegirmasi hisobga olinmaydi
-    const bonusEarned = Math.floor(subtotal * settings.bonusPercent / 100);
+    const bonusEarned = bonusWindowOpen ? Math.floor(subtotal * settings.bonusPercent / 100) : 0;
 
     const order = await Order.create({
       user: req.user._id,
+      clientRequestId,
       items: orderItems,
       deliveryType: deliveryMethod === 'delivery' ? 'delivery' : 'pickup',
       contactName,
       contactPhone,
       deliveryAddress: deliveryMethod === 'delivery' ? (deliveryAddress || '') : '',
       paymentMethod: paymentMethod === 'online' ? 'online' : 'cash',
-      paymentConfirmed: paymentMethod !== 'online',
+      paymentConfirmed: false,
       subtotal,
       bonusUsed: usedBonus,
       bonusEarned,
       total,
       note: note || '',
     });
+    createdOrderId = order._id;
 
     // Bonus balansini yangilash — atomik: manfiy ketmasligi uchun $gte tekshirish
     if (usedBonus > 0) {
@@ -184,21 +296,18 @@ exports.createOrder = async (req, res) => {
       if (bonusResult.modifiedCount === 0) {
         await Order.findByIdAndDelete(order._id);
         // Restore all decremented stock (bonus check failed after inventory was already decremented)
-        for (const d of decremented) {
-          await Product.updateOne(
-            { _id: d.productId },
-            { $inc: { 'variants.$[v].stock': d.qty, totalSold: -d.qty } },
-            { arrayFilters: [{ 'v.size': d.size, 'v.color': d.color }] }
-          );
-        }
+        await rollbackOrderSideEffects({ decremented, promoDecremented });
         return res.status(400).json({ success: false, message: msg(req, 'Недостаточно бонусов', 'Бонустар жетишсиз') });
       }
+      bonusDebitApplied = usedBonus;
       await BonusTransaction.create({
         user: req.user._id, type: 'used', amount: usedBonus, order: order._id,
         description_ru: `Использовано при заказе ${order.orderNumber}`,
         description_ky: `${order.orderNumber} буйрутмасында колдонулду`,
       });
     }
+
+    sideEffectsCommitted = true;
 
     // Admin ga Socket.io orqali xabar / Notify admin via Socket.io
     const io = req.app.get('io');
@@ -215,6 +324,32 @@ exports.createOrder = async (req, res) => {
     await order.populate('user', 'email firstName lastName');
     res.status(201).json({ success: true, order });
   } catch (error) {
+    if (!sideEffectsCommitted) {
+      const rollbackErrors = [];
+      const attemptRollback = async action => {
+        try { await action(); } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+      };
+      if (bonusDebitApplied > 0) {
+        await attemptRollback(async () =>
+          await User.updateOne(
+            { _id: req.user._id },
+            { $inc: { bonusBalance: bonusDebitApplied, totalSaved: -bonusDebitApplied } }
+          )
+        );
+      }
+      if (createdOrderId) {
+        await attemptRollback(() => BonusTransaction.deleteMany({ order: createdOrderId }));
+        await attemptRollback(() => Order.findByIdAndDelete(createdOrderId));
+      }
+      await attemptRollback(() => rollbackOrderSideEffects({ decremented, promoDecremented }));
+      if (rollbackErrors.length) {
+        console.error('createOrder rollback failed:', rollbackErrors[0].name, rollbackErrors[0].code);
+      }
+    }
+    if (error.code === 11000 && clientRequestId) {
+      const existingOrder = await Order.findOne({ user: req.user._id, clientRequestId });
+      if (existingOrder) return res.json({ success: true, order: existingOrder });
+    }
     console.error('createOrder error:', error);
     res.status(500).json({ success: false, message: msg(req, 'Ошибка создания заказа', 'Буйрутма кошуудо ката') });
   }
@@ -283,176 +418,106 @@ exports.getAllOrders = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { status, comment, cancelReason } = req.body;
-
-    const VALID_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'cancelled'];
-    if (!status || !VALID_STATUSES.includes(status)) {
+    const transitions = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['preparing', 'cancelled'],
+      preparing: ['ready', 'cancelled'],
+      ready: ['cancelled'],
+    };
+    if (!['pending', 'confirmed', 'preparing', 'ready', 'cancelled'].includes(status)) {
       return res.status(400).json({ success: false, message: msg(req, 'Неверный статус', 'Статус туура эмес') });
     }
 
-    const order = await Order.findById(req.params.id).populate('user');
-    if (!order) return res.status(404).json({ success: false, message: msg(req, 'Заказ не найден', 'Буйрутма табылган жок') });
-
-    const prevStatus = order.status;
-    if (prevStatus === 'cancelled') {
+    const current = await Order.findById(req.params.id);
+    if (!current) return res.status(404).json({ success: false, message: msg(req, 'Заказ не найден', 'Буйрутма табылган жок') });
+    if (current.status === 'cancelled') {
       return res.status(400).json({ success: false, message: msg(req, 'Заказ уже отменён', 'Буйрутма мурунтан жокко чыгарылган') });
     }
-
-    // Only forward transitions allowed (except cancelled which is always terminal)
-    const TRANSITIONS = {
-      pending:    ['confirmed', 'cancelled'],
-      confirmed:  ['preparing', 'cancelled'],
-      preparing:  ['ready', 'cancelled'],
-      ready:      ['cancelled'],
-    };
-    if (status !== prevStatus && !(TRANSITIONS[prevStatus] || []).includes(status)) {
-      return res.status(400).json({ success: false, message: msg(req, `Нельзя перевести из "${prevStatus}" в "${status}"`, `"${prevStatus}" дан "${status}" га өткөрүүгө болбойт`) });
+    if (status !== current.status && !transitions[current.status]?.includes(status)) {
+      return res.status(400).json({ success: false, message: msg(req, 'Недопустимый переход статуса', 'Статусту мындай өзгөртүүгө болбойт') });
     }
 
-    order.status = status;
-    order.statusHistory.push({ status, timestamp: new Date(), comment: comment || '' });
-    if (status === 'cancelled' && cancelReason) order.cancelReason = cancelReason;
-
-    // ── Cancel: stock qaytarish + bonus qaytarish ──
-    if (status === 'cancelled' && prevStatus !== 'cancelled') {
-      // Stock qaytarish — $elemMatch + arrayFilters: to'g'ri variantni topish uchun
-      for (const item of order.items) {
-        const itemColor = item.color ?? '';
-        await Product.updateOne(
-          { _id: item.product, variants: { $elemMatch: { size: item.size, color: itemColor } } },
-          { $inc: { 'variants.$[v].stock': item.qty, totalSold: -item.qty } },
-          { arrayFilters: [{ 'v.size': item.size, 'v.color': itemColor }] }
-        );
-        // Aksiya limitini qaytarish (faqat limit belgilangan bo'lsa)
-        if (item.promotionId) {
-          await Promotion.updateOne(
-            { _id: item.promotionId, 'products.product': item.product, 'products.limit': { $ne: null } },
-            { $inc: { 'products.$.limit': item.qty } }
-          );
-        }
-      }
-
-      // Bonus qaytarish: bonusUsed + agar ready bo'lgan bo'lsa bonusEarned ham qaytarib olish
-      const earnedTx = await BonusTransaction.findOne({ order: order._id, type: 'earned' });
-
-      if (order.bonusUsed > 0 || earnedTx) {
-        const user = await User.findById(order.user._id);
-
-        if (order.bonusUsed > 0) {
-          user.bonusBalance += order.bonusUsed;
-          user.totalSaved = Math.max(0, user.totalSaved - order.bonusUsed);
-          await BonusTransaction.create({
-            user: user._id, type: 'refund', amount: order.bonusUsed, order: order._id,
-            description_ru: `Возврат бонусов за отменённый заказ ${order.orderNumber}`,
-            description_ky: `${order.orderNumber} жокко чыгарылган буйрутма үчүн бонус кайтарылды`,
-          });
-        }
-
-        if (earnedTx) {
-          user.bonusBalance = Math.max(0, user.bonusBalance - earnedTx.amount);
-          await BonusTransaction.create({
-            user: user._id, type: 'expired', amount: earnedTx.amount, order: order._id,
-            description_ru: `Начисленные бонусы отменены (заказ ${order.orderNumber} отменён)`,
-            description_ky: `${order.orderNumber} буйрутмасы жокко чыгарылгандыктан бонус алынды`,
-          });
-        }
-
-        await user.save();
-      }
+    if (status === current.status) {
+      if (status === 'ready') await grantReadyOrderBonus(current._id);
+      const order = await Order.findById(current._id).populate('user');
+      return res.json({ success: true, order });
     }
 
-    // ── Ready: bonusEarned beriladi (faqat bir marta) ──
-    if (status === 'ready' && prevStatus !== 'ready' && order.bonusEarned > 0) {
-      const alreadyGranted = await BonusTransaction.findOne({ order: order._id, type: 'earned' });
-      if (!alreadyGranted) {
-        const user = await User.findById(order.user._id);
-        const settings = await BonusSettings.findOne() || { expiryDays: 90 };
-        const expiresAt = new Date(Date.now() + settings.expiryDays * 24 * 60 * 60 * 1000);
-        user.bonusBalance += order.bonusEarned;
-        await user.save();
-        await BonusTransaction.create({
-          user: user._id, type: 'earned', amount: order.bonusEarned, order: order._id, expiresAt,
-          description_ru: `Бонус за заказ ${order.orderNumber}`,
-          description_ky: `${order.orderNumber} буйрутмасы үчүн бонус`,
-        });
-      }
-    }
-
-    await order.save();
-
-    // Socket.io + Push notification
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`user_${order.user._id}`).emit('order_status_updated', {
-        orderId: order._id,
-        orderNumber: order.orderNumber,
-        status,
+    let order;
+    if (status === 'cancelled') {
+      await cancelOrderAndRestore({
+        orderId: current._id,
+        expectedStatus: current.status,
+        reason: cancelReason || '',
         comment: comment || '',
       });
+      order = await Order.findById(current._id).populate('user');
+    } else {
+      const result = await Order.updateOne(
+        { _id: current._id, status: current.status },
+        { $set: { status }, $push: { statusHistory: { status, timestamp: new Date(), comment: comment || '' } } }
+      );
+      if (result.modifiedCount !== 1) {
+        return res.status(409).json({ success: false, message: msg(req, 'Заказ уже изменён', 'Буйрутма өзгөртүлгөн') });
+      }
+      if (status === 'ready') await grantReadyOrderBonus(current._id);
+      order = await Order.findById(current._id).populate('user');
     }
 
-    const orderUser = await User.findById(order.user._id).select('pushToken language');
-    if (orderUser?.pushToken) {
+    const io = req.app.get('io');
+    io?.to(`user_${current.user}`).emit('order_status_updated', {
+      orderId: current._id,
+      orderNumber: current.orderNumber,
+      status,
+      comment: comment || '',
+    });
+
+    const orderUser = await User.findById(current.user).select('pushToken pushTokens language');
+    const tokens = [...new Set([...(orderUser?.pushTokens || []), orderUser?.pushToken].filter(Boolean))];
+    if (tokens.length) {
       await sendOrderStatusPush({
-        pushToken:   orderUser.pushToken,
-        userLang:    orderUser.language || 'ru',
+        pushToken: tokens,
+        userLang: orderUser.language || 'ru',
         status,
-        orderNumber: order.orderNumber,
-        orderId:     order._id.toString(),
+        orderNumber: current.orderNumber,
+        orderId: current._id.toString(),
       });
     }
-
     res.json({ success: true, order });
   } catch (error) {
+    if (error.statusCode === 409) {
+      return res.status(409).json({ success: false, message: msg(req, 'Заказ уже изменён', 'Буйрутма өзгөртүлгөн') });
+    }
     console.error('updateOrderStatus error:', error);
-    res.status(500).json({ success: false, message: msg(req, 'Ошибка обновления статуса', 'Статусту жаңыртууда ката') });
+    res.status(500).json({ success: false, message: msg(req, 'Ошибка обновления заказа', 'Буйрутманы өзгөртүүдө ката') });
   }
 };
 
 // ─── Foydalanuvchi: o'z buyurtmasini bekor qilish ────────────────
 exports.cancelMyOrder = async (req, res) => {
   try {
-    const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
-    if (!order) return res.status(404).json({ success: false, message: msg(req, 'Заказ не найден', 'Буйрутма табылган жок') });
-    if (order.status !== 'pending') {
+    const current = await Order.findOne({ _id: req.params.id, user: req.user._id });
+    if (!current) return res.status(404).json({ success: false, message: msg(req, 'Заказ не найден', 'Буйрутма табылган жок') });
+    if (current.status !== 'pending') {
       return res.status(400).json({ success: false, message: msg(req, 'Можно отменить только новый заказ', 'Жаңы буйрутманы гана жокко чыгарса болот') });
     }
-
-    // Stock + aksiya limitini qaytarish
-    for (const item of order.items) {
-      const itemColor = item.color ?? '';
-      await Product.updateOne(
-        { _id: item.product, variants: { $elemMatch: { size: item.size, color: itemColor } } },
-        { $inc: { 'variants.$[v].stock': item.qty, totalSold: -item.qty } },
-        { arrayFilters: [{ 'v.size': item.size, 'v.color': itemColor }] }
-      );
-      if (item.promotionId) {
-        await Promotion.updateOne(
-          { _id: item.promotionId, 'products.product': item.product, 'products.limit': { $ne: null } },
-          { $inc: { 'products.$.limit': item.qty } }
-        );
-      }
-    }
-
-    // bonusUsed qaytarish
-    if (order.bonusUsed > 0) {
-      const user = await User.findById(req.user._id);
-      user.bonusBalance += order.bonusUsed;
-      user.totalSaved = Math.max(0, user.totalSaved - order.bonusUsed);
-      await user.save();
-      await BonusTransaction.create({
-        user: user._id, type: 'refund', amount: order.bonusUsed, order: order._id,
-        description_ru: `Возврат бонусов за отменённый заказ ${order.orderNumber}`,
-        description_ky: `${order.orderNumber} жокко чыгарылган буйрутма үчүн бонус кайтарылды`,
-      });
-    }
-
-    order.status = 'cancelled';
-    order.cancelReason = req.body.reason || '';
-    order.statusHistory.push({ status: 'cancelled', timestamp: new Date(), comment: req.body.reason || '' });
-    await order.save();
-
+    const order = await cancelOrderAndRestore({
+      orderId: current._id,
+      expectedStatus: 'pending',
+      userId: req.user._id,
+      reason: req.body?.reason || '',
+      comment: req.body?.reason || '',
+    });
+    req.app.get('io')?.to('admin').emit('order_status_updated', {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: 'cancelled',
+    });
     res.json({ success: true, order });
   } catch (error) {
+    if (error.statusCode === 409) {
+      return res.status(409).json({ success: false, message: msg(req, 'Заказ уже изменён', 'Буйрутма өзгөртүлгөн') });
+    }
     console.error('cancelMyOrder error:', error);
     res.status(500).json({ success: false, message: msg(req, 'Ошибка отмены заказа', 'Буйрутманы жокко чыгарууда ката') });
   }
@@ -513,15 +578,17 @@ exports.getPendingRatings = async (req, res) => {
 // ─── Admin: Onlayn to'lovni tasdiqlash / Confirm online payment ───
 exports.confirmPayment = async (req, res) => {
   try {
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { paymentConfirmed: true },
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, status: { $ne: 'cancelled' } },
+      { $set: { paymentConfirmed: true } },
       { new: true }
     );
     if (!order) return res.status(404).json({ success: false, message: msg(req, 'Заказ не найден', 'Буйрутма табылган жок') });
+    await grantReadyOrderBonus(order._id);
     res.json({ success: true, order });
   } catch (error) {
-    res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });
+    console.error('confirmPayment error:', error);
+    res.status(500).json({ success: false, message: msg(req, 'Ошибка подтверждения оплаты', 'Төлөмдү ырастоодо ката') });
   }
 };
 
@@ -589,24 +656,38 @@ exports.getDashboardStats = async (req, res) => {
     ] = await Promise.all([
       Order.countDocuments({ createdAt: { $gte: today, $lt: tomorrow }, status: { $ne: 'cancelled' } }),
       Order.aggregate([
-        { $match: { createdAt: { $gte: today, $lt: tomorrow }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: today, $lt: tomorrow }, status: { $ne: 'cancelled' }, paymentConfirmed: true } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
       Order.countDocuments({ status: { $ne: 'cancelled' } }),
       Order.countDocuments({ status: 'cancelled' }),
       Order.countDocuments({ status: 'pending' }),
       Order.aggregate([
-        { $match: { createdAt: { $gte: thisMonthStart }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: thisMonthStart }, status: { $ne: 'cancelled' }, paymentConfirmed: true } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
       Order.aggregate([
-        { $match: { createdAt: { $gte: lastMonthStart, $lt: lastMonthEnd }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: lastMonthStart, $lt: lastMonthEnd }, status: { $ne: 'cancelled' }, paymentConfirmed: true } },
         { $group: { _id: null, total: { $sum: '$total' } } },
       ]),
-      Product.find({ isActive: true })
-        .sort({ totalSold: -1 })
-        .limit(5)
-        .select('name_ru name_ky images totalSold price'),
+      Order.aggregate([
+        { $match: { status: { $ne: 'cancelled' }, paymentConfirmed: true } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.product', totalSold: { $sum: '$items.qty' } } },
+        { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
+        { $unwind: '$product' },
+        { $match: { 'product.isActive': true } },
+        { $sort: { totalSold: -1 } },
+        { $limit: 5 },
+        { $project: {
+          _id: '$product._id',
+          name_ru: '$product.name_ru',
+          name_ky: '$product.name_ky',
+          images: '$product.images',
+          price: '$product.price',
+          totalSold: 1,
+        } },
+      ]),
       BonusTransaction.aggregate([
         { $match: { type: { $in: ['earned', 'admin_add'] } } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
@@ -621,7 +702,7 @@ exports.getDashboardStats = async (req, res) => {
     // Haftalik buyurtmalar / Weekly orders
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const weeklyData = await Order.aggregate([
-      { $match: { createdAt: { $gte: weekAgo }, status: { $ne: 'cancelled' } } },
+      { $match: { createdAt: { $gte: weekAgo }, status: { $ne: 'cancelled' }, paymentConfirmed: true } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
@@ -636,7 +717,7 @@ exports.getDashboardStats = async (req, res) => {
     const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
     const [monthlyData, statusCounts] = await Promise.all([
       Order.aggregate([
-        { $match: { createdAt: { $gte: sixMonthsAgo }, status: { $ne: 'cancelled' } } },
+        { $match: { createdAt: { $gte: sixMonthsAgo }, status: { $ne: 'cancelled' }, paymentConfirmed: true } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
@@ -662,10 +743,11 @@ exports.getDashboardStats = async (req, res) => {
 
     // Jami daromad (barcha vaqt uchun o'rtacha chek) / All-time revenue for avg order value
     const allTimeRevenueData = await Order.aggregate([
-      { $match: { status: { $ne: 'cancelled' } } },
-      { $group: { _id: null, total: { $sum: '$total' } } },
+      { $match: { status: { $ne: 'cancelled' }, paymentConfirmed: true } },
+      { $group: { _id: null, total: { $sum: '$total' }, orderCount: { $sum: 1 } } },
     ]);
-    const avgOrder = totalOrders === 0 ? 0 : Math.round((allTimeRevenueData[0]?.total || 0) / totalOrders);
+    const paidOrderCount = allTimeRevenueData[0]?.orderCount || 0;
+    const avgOrder = paidOrderCount === 0 ? 0 : Math.round(allTimeRevenueData[0].total / paidOrderCount);
 
     res.json({
       success: true,

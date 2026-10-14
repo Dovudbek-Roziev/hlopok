@@ -1,5 +1,6 @@
 // Do'kon ma'lumotlari ekrani / Store info screen
 import React from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +11,7 @@ import { useColors } from '../../theme/useColors';
 import { useStoreInfo } from '../../utils/useStoreInfo';
 
 const StoreInfoScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -18,7 +20,7 @@ const StoreInfoScreen = () => {
   return (
     <ScreenWrapper>
     <YStack flex={1} backgroundColor={Colors.bg}>
-      <XStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
+      <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft color={Colors.black} size={24} />
         </TouchableOpacity>

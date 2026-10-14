@@ -5,7 +5,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["app/*"]
+      "@/*": ["app/*"],
+      "tamagui": ["app/compat/tamagui-shim.tsx"]
     }
   }
 }

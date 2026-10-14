@@ -1,5 +1,6 @@
 // Bonus kontrolleri / Bonus controller
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const { BonusTransaction, BonusSettings } = require('../models/Bonus');
 const msg = require('../utils/msg');
 
@@ -18,8 +19,7 @@ exports.getMyBonusHistory = async (req, res) => {
 // ─── Bonus sozlamalari olish / Get bonus settings ─────────────────
 exports.getSettings = async (req, res) => {
   try {
-    let settings = await BonusSettings.findOne();
-    if (!settings) settings = await BonusSettings.create({});
+    const settings = await BonusSettings.findOne() || { bonusPercent: 5, expiryDays: 90, warningDays: 7 };
     res.json({ success: true, settings });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });
@@ -33,13 +33,13 @@ exports.updateSettings = async (req, res) => {
 
     if (bonusPercent !== undefined) {
       const pct = Number(bonusPercent);
-      if (isNaN(pct) || pct < 0 || pct > 100) {
+      if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
         return res.status(400).json({ success: false, message: msg(req, 'Процент от 0 до 100', 'Пайыз 0 ден 100 ге чейин') });
       }
     }
     if (expiryDays !== undefined) {
       const days = Number(expiryDays);
-      if (isNaN(days) || days < 1 || days > 3650) {
+      if (!Number.isInteger(days) || days < 1 || days > 3650) {
         return res.status(400).json({ success: false, message: msg(req, 'Срок от 1 до 3650 дней', 'Мөөнөт 1 ден 3650 күнгө чейин') });
       }
     }
@@ -48,7 +48,14 @@ exports.updateSettings = async (req, res) => {
     if (!settings) settings = new BonusSettings();
     if (bonusPercent !== undefined) settings.bonusPercent = Number(bonusPercent);
     if (expiryDays !== undefined) settings.expiryDays = Number(expiryDays);
-    if (warningDays !== undefined) settings.warningDays = Number(warningDays);
+    if (warningDays !== undefined || expiryDays !== undefined) {
+      const days = warningDays === undefined ? settings.warningDays : Number(warningDays);
+      const maxWarningDays = expiryDays === undefined ? settings.expiryDays : Number(expiryDays);
+      if (!Number.isInteger(days) || days < 0 || days > maxWarningDays) {
+        return res.status(400).json({ success: false, message: msg(req, 'Проверьте срок предупреждения', 'Эскертүү мөөнөтүн текшериңиз') });
+      }
+      settings.warningDays = days;
+    }
     await settings.save();
     res.json({ success: true, settings });
   } catch (error) {
@@ -80,7 +87,10 @@ exports.addBonusManual = async (req, res) => {
     }
 
     const settings = await BonusSettings.findOne() || { expiryDays: 90 };
-    const expiresAt = new Date(Date.now() + settings.expiryDays * 24 * 60 * 60 * 1000);
+    const expiresAt = user.bonusExpiresAt || new Date(user.createdAt.getTime() + settings.expiryDays * 24 * 60 * 60 * 1000);
+    if (expiresAt <= new Date() || user.bonusExpiryProcessedAt) {
+      return res.status(400).json({ success: false, message: msg(req, 'Срок бонусного периода истёк', 'Бонус мөөнөтү бүттү') });
+    }
 
     user.bonusBalance += parsedAmount;
     await user.save();
@@ -118,22 +128,41 @@ exports.findByQR = async (req, res) => {
 
 // ─── Admin: Muddatni uzaytirish / Extend expiry ───────────────────
 exports.extendExpiry = async (req, res) => {
+  const { userId, days } = req.body;
+  const parsedDays = Number(days);
+  if (!mongoose.Types.ObjectId.isValid(userId) || !Number.isInteger(parsedDays) || parsedDays < 1 || parsedDays > 3650) {
+    return res.status(400).json({ success: false, message: msg(req, 'Укажите целое число дней от 1 до 3650', '1ден 3650гө чейинки бүтүн күн санын көрсөтүңүз') });
+  }
+
+  const session = await mongoose.startSession();
   try {
-    const { userId, days } = req.body;
-    const parsedDays = Number(days);
-    if (!parsedDays || parsedDays <= 0 || isNaN(parsedDays)) {
-      return res.status(400).json({ success: false, message: msg(req, 'Неверное количество дней', 'Күндөр саны туура эмес') });
-    }
-    const newExpiry = new Date(Date.now() + parsedDays * 24 * 60 * 60 * 1000);
-
-    await BonusTransaction.updateMany(
-      { user: userId, type: { $in: ['earned', 'admin_add'] } },
-      { expiresAt: newExpiry }
-    );
-
-    res.json({ success: true, message: msg(req, 'Срок бонусов продлён', 'Бонус мөөнөтү узартылды') });
+    let newExpiry;
+    await session.withTransaction(async () => {
+      const user = await User.findById(userId).session(session);
+      if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
+      const settings = await BonusSettings.findOne().session(session);
+      const currentExpiry = user.bonusExpiresAt || new Date(user.createdAt.getTime() + (settings?.expiryDays ?? 90) * 86400000);
+      const now = new Date();
+      if (user.bonusExpiryProcessedAt || currentExpiry <= now) {
+        throw Object.assign(new Error('Bonus period expired'), { statusCode: 400 });
+      }
+      newExpiry = new Date(currentExpiry.getTime() + parsedDays * 86400000);
+      user.bonusExpiresAt = newExpiry;
+      user.bonusExpiryWarningSentAt = undefined;
+      await user.save({ session });
+      await BonusTransaction.updateMany(
+        { user: userId, type: { $in: ['earned', 'admin_add'] }, $or: [{ expiresAt: { $gt: now } }, { expiresAt: { $exists: false } }] },
+        { $set: { expiresAt: newExpiry } }, { session }
+      );
+    });
+    res.json({ success: true, expiresAt: newExpiry, message: msg(req, 'Срок бонусов продлён', 'Бонустун мөөнөтү узартылды') });
   } catch (error) {
-    res.status(500).json({ success: false, message: msg(req, 'Ошибка', 'Ката') });
+    if (error.statusCode === 404) return res.status(404).json({ success: false, message: msg(req, 'Пользователь не найден', 'Колдонуучу табылган жок') });
+    if (error.statusCode === 400) return res.status(400).json({ success: false, message: msg(req, 'Срок бонусов уже истёк', 'Бонустун мөөнөтү бүтүп калган') });
+    console.error('extendExpiry error:', error);
+    res.status(500).json({ success: false, message: msg(req, 'Ошибка продления срока', 'Мөөнөттү узартууда ката') });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -157,6 +186,39 @@ exports.getAllTransactions = async (req, res) => {
     res.json({
       success: true, transactions,
       pagination: { page: Number(page), limit: safeLimit, total },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });
+  }
+};
+
+exports.getTransactionStats = async (req, res) => {
+  try {
+    const settings = await BonusSettings.findOne();
+    const now = new Date();
+    const expiryDays = settings?.expiryDays ?? 90;
+    const legacyCutoff = new Date(now.getTime() - expiryDays * 86400000);
+    const [totals, usersWithBonus] = await Promise.all([
+      BonusTransaction.aggregate([
+        { $group: { _id: '$type', total: { $sum: '$amount' } } },
+      ]),
+      User.countDocuments({
+        bonusBalance: { $gt: 0 },
+        bonusExpiryProcessedAt: { $exists: false },
+        $or: [
+          { bonusExpiresAt: { $gt: now } },
+          { bonusExpiresAt: { $exists: false }, createdAt: { $gt: legacyCutoff } },
+        ],
+      }),
+    ]);
+    const byType = Object.fromEntries(totals.map(row => [row._id, row.total]));
+    res.json({
+      success: true,
+      stats: {
+        totalGiven: (byType.earned || 0) + (byType.admin_add || 0),
+        totalUsed: Math.max(0, (byType.used || 0) - (byType.refund || 0)),
+        usersWithBonus,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });

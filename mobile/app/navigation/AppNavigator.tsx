@@ -40,7 +40,7 @@ const MainScreen = () => (
   </>
 );
 
-const AppNavigator = ({ navigationRef }: { navigationRef?: React.MutableRefObject<any> }) => {
+const AppNavigator = ({ navigationRef, onReady }: { navigationRef?: React.MutableRefObject<any>; onReady?: () => void }) => {
   const { isLoading, setUser, setLoading } = useAuthStore();
   const [showSplash, setShowSplash] = useState(true);
 
@@ -72,7 +72,7 @@ const AppNavigator = ({ navigationRef }: { navigationRef?: React.MutableRefObjec
   }
 
   return (
-    <NavigationContainer theme={LightTheme} ref={navigationRef}>
+    <NavigationContainer theme={LightTheme} ref={navigationRef} onReady={onReady}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="MainApp" component={MainScreen} />
         <RootStack.Screen

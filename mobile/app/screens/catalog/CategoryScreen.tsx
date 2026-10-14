@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, TouchableOpacity, Pressable, StyleSheet, Animated } from 'react-native';
 import { YStack, XStack, Text, Image, Spinner } from 'tamagui';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -10,6 +11,7 @@ import { useColors } from '../../theme/useColors';
 import { formatPrice } from '../../utils/format';
 
 const CategoryScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
@@ -45,7 +47,7 @@ const CategoryScreen = () => {
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
     <YStack flex={1} backgroundColor={Colors.bg}>
-      <XStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
+      <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft color={Colors.black} size={24} />
         </TouchableOpacity>

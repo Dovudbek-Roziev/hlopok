@@ -9,8 +9,10 @@ const reviewCtrl = require('../controllers/reviewController');
 
 router.get ('/',           optionalAuth, ctrl.getProducts);
 router.get ('/:id',        optionalAuth, ctrl.getProduct);
+router.post('/bulk-archive', protect, adminOnly, ctrl.bulkArchiveProducts);
 router.post('/',           protect, adminOnly, uploadProduct.array('images', 10), ctrl.createProduct);
 router.put ('/:id',        protect, adminOnly, uploadProduct.array('images', 10), ctrl.updateProduct);
+router.patch('/:id/visibility', protect, adminOnly, ctrl.setProductVisibility);
 router.delete('/:id',      protect, adminOnly, ctrl.deleteProduct);
 router.put ('/:id/stock',  protect, adminOnly, ctrl.updateStock);
 

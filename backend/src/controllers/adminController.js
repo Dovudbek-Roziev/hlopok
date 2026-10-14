@@ -31,7 +31,7 @@ exports.getUsers = async (req, res) => {
     const skip = (Number(page) - 1) * safeLimit;
     const [users, total] = await Promise.all([
       User.find(filter)
-        .select('-password -qrCode')
+        .select('-password -qrCode -avatar')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safeLimit),
@@ -50,7 +50,7 @@ exports.getUsers = async (req, res) => {
 // ─── Bitta foydalanuvchi / Single user ───────────────────────────
 exports.getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).select('-password -avatar');
     if (!user) return res.status(404).json({ success: false, message: msg(req, 'Пользователь не найден', 'Колдонуучу табылган жок') });
 
     const orders = await Order.find({ user: req.params.id }).sort({ createdAt: -1 }).limit(10);
@@ -69,7 +69,7 @@ exports.pushBroadcast = async (req, res) => {
       return res.status(400).json({ success: false, message: msg(req, 'Заполните все поля', 'Бардык талааларды толтуруңуз') });
     }
 
-    let query = { pushToken: { $exists: true, $nin: [null, ''] }, isActive: true };
+    let query = { $or: [{ pushToken: { $exists: true, $nin: [null, ''] } }, { 'pushTokens.0': { $exists: true } }], isActive: true };
 
     if (target === 'active') {
       const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
@@ -79,27 +79,31 @@ exports.pushBroadcast = async (req, res) => {
       query.bonusBalance = { $gt: 0 };
     }
 
-    const users = await User.find(query).select('pushToken language').lean();
+    const users = await User.find(query).select('pushToken pushTokens language').lean();
 
     // Expo batch API: 100 ta message gacha bitta so'rovda yuborish
     const BATCH = 100;
     let sent = 0;
-    const messages = users
-      .filter(u => u.pushToken?.startsWith('ExponentPushToken') || u.pushToken?.startsWith('ExpoPushToken'))
-      .map(u => {
-        const isKy = u.language === 'ky';
-        return { to: u.pushToken, title: isKy ? title_ky : title_ru, body: isKy ? body_ky : body_ru, data: { screen: 'HomeTab' }, sound: 'default', priority: 'high' };
-      });
+    const messages = users.flatMap(u => {
+      const isKy = u.language === 'ky';
+      const tokens = [...new Set([...(u.pushTokens || []), u.pushToken].filter(t => /^(Exponent|Expo)PushToken\[[A-Za-z0-9_-]+\]$/.test(t || '')))];
+      return tokens.map(token => ({ to: token, title: isKy ? title_ky : title_ru, body: isKy ? body_ky : body_ru, data: { screen: 'HomeTab' }, sound: 'default', priority: 'high', channelId: 'orders' }));
+    });
 
     for (let i = 0; i < messages.length; i += BATCH) {
       const batch = messages.slice(i, i + BATCH);
       try {
-        await fetch('https://exp.host/--/api/v2/push/send', {
+        const response = await fetch('https://exp.host/--/api/v2/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify(batch),
         });
-        sent += batch.length;
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !Array.isArray(result?.data)) {
+          console.error('pushBroadcast rejected batch:', response.status, result);
+          continue;
+        }
+        sent += result.data.filter(ticket => ticket.status === 'ok').length;
       } catch (err) {
         console.error('pushBroadcast batch error:', err.message);
       }
@@ -123,6 +127,9 @@ exports.resetUserPassword = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: msg(req, 'Пользователь не найден', 'Колдонуучу табылган жок') });
 
     user.password = newPassword;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.pushToken = '';
+    user.pushTokens = [];
     await user.save();
 
     res.json({ success: true, message: msg(req, 'Пароль изменён', 'Сырсөз өзгөртүлдү') });
@@ -162,6 +169,7 @@ exports.toggleUserBlock = async (req, res) => {
 
     user.isActive = !user.isActive;
     await user.save();
+    if (!user.isActive) req.app.get('io')?.in(`user_${user._id}`).disconnectSockets(true);
 
     res.json({
       success: true,

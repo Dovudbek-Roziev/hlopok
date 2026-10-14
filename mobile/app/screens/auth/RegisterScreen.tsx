@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, TextInput, StatusBar } from 'react-native';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, TextInput, StatusBar } from 'react-native';
 import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -38,13 +39,15 @@ const Field = ({ label, icon: Icon, rightEl, error, ...props }: any) => (
 );
 
 const RegisterScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors     = useColors();
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route      = useRoute<Route>();
   const { setUser } = useAuthStore();
 
-  const verified = route.params?.verified === true;
+  const registrationToken = route.params?.registrationToken;
+  const verified = Boolean(registrationToken);
 
   const [form, setForm] = useState({
     phone:           route.params?.phone || '',
@@ -79,6 +82,7 @@ const RegisterScreen = () => {
     try {
       const res = await authApi.register({
         phone:     form.phone.trim(),
+        verificationToken: registrationToken,
         firstName: form.firstName.trim(),
         lastName:  form.lastName.trim(),
         gender:    form.gender,
@@ -86,6 +90,13 @@ const RegisterScreen = () => {
         language:  (i18n.language === 'ky' ? 'ky' : 'ru') as 'ru' | 'ky',
       });
       setUser(res.data.user, res.data.token);
+      Alert.alert(
+        t('auth.bonusActivatedTitle'),
+        t('auth.bonusActivatedMessage', {
+          percent: res.data.bonusProgram?.percent ?? 5,
+          days: res.data.bonusProgram?.days ?? 90,
+        }),
+      );
     } catch (err: any) {
       setError(err.response?.data?.message || t('common.error'));
     } finally {
@@ -99,7 +110,7 @@ const RegisterScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFD700" />
 
       {/* ── Yellow header ── */}
-      <YStack backgroundColor="#FFD700" paddingTop={52} paddingHorizontal={20} paddingBottom={32}>
+      <YStack backgroundColor="#FFD700" paddingTop={headerTopPadding} paddingHorizontal={20} paddingBottom={32}>
         <XStack alignItems="center" gap={12} marginBottom={16}>
           <TouchableOpacity onPress={() => navigation.goBack()}
             style={{ width: 36, height: 36, borderRadius: 18,

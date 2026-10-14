@@ -1,135 +1,141 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, View, StyleSheet, Dimensions, Easing } from 'react-native';
-import { Colors } from '../theme/colors';
-
-const { width, height } = Dimensions.get('window');
-const LETTERS = ['Х', 'Л', 'О', 'П', 'О', 'К'];
-
-const DOTS = [
-  { x: 0.10, y: 0.14, size: 16 },
-  { x: 0.86, y: 0.18, size: 10 },
-  { x: 0.06, y: 0.62, size: 13 },
-  { x: 0.91, y: 0.56, size: 18 },
-  { x: 0.74, y: 0.84, size: 9 },
-  { x: 0.20, y: 0.80, size: 12 },
-  { x: 0.52, y: 0.08, size: 8 },
-  { x: 0.64, y: 0.91, size: 11 },
-];
+import { Animated, Easing, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Heart, Shirt, ShoppingBag, Sparkles, Truck } from 'lucide-react-native';
+import HlopokLogo from './HlopokLogo';
 
 const SplashAnimation = () => {
-  const circleScale   = useRef(new Animated.Value(0)).current;
-  const circleOpacity = useRef(new Animated.Value(0)).current;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const compactScreen = screenHeight < 500;
+  const roomyScreen = !compactScreen && screenWidth >= 700;
+  const sceneWidth = roomyScreen
+    ? Math.min(screenWidth * 0.76, 760)
+    : Math.min(screenWidth - 32, 360);
+  const sceneHeight = roomyScreen ? 350 : compactScreen ? 224 : 272;
+  const bagSize = Math.min(roomyScreen ? 144 : 116, sceneWidth * 0.32);
+  const itemSize = Math.min(roomyScreen ? 72 : 56, Math.max(48, sceneWidth * 0.15));
+  const truckSize = roomyScreen ? 64 : 52;
+  const bagLeft = (sceneWidth - bagSize) / 2;
+  const itemLeft = (sceneWidth - itemSize) / 2;
+  const trackLeft = sceneWidth * 0.14;
+  const trackWidth = sceneWidth * 0.72;
+  const truckLeft = trackLeft + 4;
+  const truckTravel = trackLeft + trackWidth - truckSize - truckLeft;
+  const bagTop = sceneHeight * 0.19;
+  const itemTop = sceneHeight * 0.035;
+  const roadTop = sceneHeight - 34;
+  const truckTop = roadTop - truckSize * 0.62;
+  const trackTop = sceneHeight - 10;
 
-  const letterScales = useRef(LETTERS.map(() => new Animated.Value(0))).current;
-  const letterOpas   = useRef(LETTERS.map(() => new Animated.Value(0))).current;
-
-  // Wave (bounce) animatsiyasi uchun alohida
-  const waveY = useRef(LETTERS.map(() => new Animated.Value(0))).current;
-
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const taglineY       = useRef(new Animated.Value(12)).current;
-  const lineWidth      = useRef(new Animated.Value(0)).current;
-  const dotAnims       = useRef(DOTS.map(() => new Animated.Value(0))).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const rise = useRef(new Animated.Value(12)).current;
+  const logoPulse = useRef(new Animated.Value(1)).current;
+  const shoppingProgress = useRef(new Animated.Value(0)).current;
+  const shoppingLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const logoPulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    // 1) Oq doira chiqadi
-    Animated.parallel([
-      Animated.timing(circleOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.spring(circleScale, { toValue: 1, tension: 45, friction: 7, useNativeDriver: true }),
-    ]).start();
+    const entrance = Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(rise, { toValue: 0, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]);
 
-    // 2) Nuqtalar tarqaladi
-    Animated.stagger(45, dotAnims.map(a =>
-      Animated.spring(a, { toValue: 1, tension: 70, friction: 8, useNativeDriver: true })
-    )).start();
-
-    // 3) Harflar bir-bir scale bilan chiqadi
-    LETTERS.forEach((_, i) => {
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.spring(letterScales[i], { toValue: 1, tension: 240, friction: 7, useNativeDriver: true }),
-          Animated.timing(letterOpas[i], { toValue: 1, duration: 120, useNativeDriver: true }),
-        ]).start();
-      }, 250 + i * 80);
+    entrance.start(({ finished }) => {
+      if (!finished) return;
+      shoppingLoop.current = Animated.loop(Animated.timing(shoppingProgress, {
+        toValue: 1,
+        duration: 2100,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+        isInteraction: false,
+      }));
+      shoppingLoop.current.start();
+      logoPulseLoop.current = Animated.loop(Animated.sequence([
+        Animated.timing(logoPulse, {
+          toValue: 1.035,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+        Animated.timing(logoPulse, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+      ]));
+      logoPulseLoop.current.start();
     });
 
-    // 4) Chiziq chiqadi
-    Animated.timing(lineWidth, {
-      toValue: 1, duration: 380, delay: 820,
-      easing: Easing.out(Easing.cubic), useNativeDriver: false,
-    }).start();
-
-    // 5) Tagline chiqadi
-    Animated.parallel([
-      Animated.timing(taglineOpacity, { toValue: 1, duration: 500, delay: 980, useNativeDriver: true }),
-      Animated.timing(taglineY, { toValue: 0, duration: 400, delay: 980, useNativeDriver: true }),
-    ]).start();
-
-    // 6) Kirish tugagach — to'lqin (wave) sikli boshlanadi va app tayyor bo'lguncha davom etadi
-    const startWaveLoop = () => {
-      Animated.stagger(70, waveY.map(y =>
-        Animated.sequence([
-          Animated.timing(y, { toValue: -14, duration: 190, useNativeDriver: true }),
-          Animated.timing(y, { toValue: 0,   duration: 190, useNativeDriver: true }),
-        ])
-      )).start(() => {
-        setTimeout(startWaveLoop, 650);
-      });
+    return () => {
+      entrance.stop();
+      shoppingLoop.current?.stop();
+      logoPulseLoop.current?.stop();
     };
+  }, [opacity, rise, shoppingProgress]);
 
-    const waveTimer = setTimeout(startWaveLoop, 1350);
-    return () => clearTimeout(waveTimer);
-  }, []);
-
-  const lineInterp = lineWidth.interpolate({ inputRange: [0, 1], outputRange: [0, 230] });
+  const shirtY = shoppingProgress.interpolate({ inputRange: [0, 0.16, 0.5, 1], outputRange: [-18, 0, bagSize * 0.52, bagSize * 0.52] });
+  const shirtOpacity = shoppingProgress.interpolate({ inputRange: [0, 0.1, 0.32, 0.5, 1], outputRange: [0, 1, 1, 0, 0] });
+  const bagScale = shoppingProgress.interpolate({ inputRange: [0, 0.16, 0.35, 0.55, 1], outputRange: [1, 1, 1.045, 1, 1] });
+  const truckX = shoppingProgress.interpolate({ inputRange: [0, 0.45, 0.95, 1], outputRange: [0, 0, truckTravel * 0.9, truckTravel] });
+  const truckOpacity = shoppingProgress.interpolate({ inputRange: [0, 0.44, 0.55, 0.91, 1], outputRange: [0, 0, 1, 1, 0] });
+  const lineScale = shoppingProgress.interpolate({ inputRange: [0, 0.45, 0.95, 1], outputRange: [0.05, 0.05, 1, 1] });
+  const sparkleOpacity = shoppingProgress.interpolate({ inputRange: [0, 0.15, 0.3, 0.7, 1], outputRange: [0.45, 0.85, 1, 0.7, 0.45] });
 
   return (
     <View style={styles.container}>
-      {/* Oq doira */}
-      <Animated.View style={[styles.circle, {
-        opacity: circleOpacity,
-        transform: [{ scale: circleScale }],
-      }]} />
-
-      {/* Floating dots */}
-      {DOTS.map((d, i) => (
-        <Animated.View key={i} style={[styles.dot, {
-          left: d.x * width  - d.size / 2,
-          top:  d.y * height - d.size / 2,
-          width: d.size, height: d.size, borderRadius: d.size / 2,
-          opacity:   dotAnims[i],
-          transform: [{ scale: dotAnims[i] }],
-        }]} />
-      ))}
-
-      {/* Kontent */}
-      <View style={styles.content}>
-        {/* "одежда для детей" */}
-        <Animated.Text style={[styles.sub, { opacity: taglineOpacity, transform: [{ translateY: taglineY }] }]}>
-          одежда для детей
-        </Animated.Text>
-
-        {/* ХЛОПОК — kirish + to'lqin */}
-        <View style={styles.lettersRow}>
-          {LETTERS.map((letter, i) => (
-            <Animated.Text
-              key={i}
-              style={[styles.letter, {
-                opacity: letterOpas[i],
-                transform: [
-                  { scale: letterScales[i] },
-                  { translateY: waveY[i] },
-                ],
-              }]}
-            >
-              {letter}
-            </Animated.Text>
-          ))}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <Animated.View style={[styles.content, { opacity, transform: [{ translateY: rise }] }]}>
+        <Animated.View style={[styles.logoPulse, { transform: [{ scale: logoPulse }] }]}>
+          <HlopokLogo size="hero" />
+        </Animated.View>
+        <View style={[styles.scene, { width: sceneWidth, height: sceneHeight }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Animated.View style={[styles.sparkle, {
+            left: bagLeft - (roomyScreen ? 78 : 48),
+            top: bagTop + bagSize * 0.28,
+            opacity: sparkleOpacity,
+          }]}>
+            <Sparkles size={roomyScreen ? 30 : 22} color="#D6A91C" strokeWidth={1.8} />
+          </Animated.View>
+          <Animated.View style={[styles.sparkle, {
+            left: bagLeft + bagSize + (roomyScreen ? 48 : 26),
+            top: bagTop + bagSize * 0.5,
+            opacity: sparkleOpacity,
+          }]}>
+            <Heart size={roomyScreen ? 24 : 18} color="#D77675" fill="#F7D5D0" strokeWidth={1.8} />
+          </Animated.View>
+          <Animated.View style={[styles.shirt, {
+            left: itemLeft,
+            top: itemTop,
+            opacity: shirtOpacity,
+            transform: [{ translateY: shirtY }],
+          }]}>
+            <Shirt size={itemSize} color="#344D3F" fill="#DAEEF2" strokeWidth={1.8} />
+          </Animated.View>
+          <Animated.View style={[styles.bag, {
+            left: bagLeft,
+            top: bagTop,
+            width: bagSize,
+            height: bagSize,
+            transform: [{ scale: bagScale }],
+          }]}>
+            <ShoppingBag size={bagSize} color="#344D3F" fill="#FFE68A" strokeWidth={1.5} />
+          </Animated.View>
+          <View style={[styles.road, { top: roadTop, left: trackLeft, width: trackWidth }]} />
+          <Animated.View style={[styles.truck, {
+            left: truckLeft,
+            top: truckTop,
+            opacity: truckOpacity,
+            transform: [{ translateX: truckX }],
+          }]}>
+            <Truck size={truckSize} color="#344D3F" strokeWidth={1.8} />
+          </Animated.View>
+          <View style={[styles.track, { top: trackTop, left: trackLeft, width: trackWidth }]}>
+            <Animated.View style={[styles.progress, { transform: [{ scaleX: lineScale }] }]} />
+          </View>
         </View>
-
-        {/* Chiziq */}
-        <Animated.View style={[styles.underline, { width: lineInterp }]} />
-      </View>
+      </Animated.View>
     </View>
   );
 };
@@ -137,52 +143,20 @@ const SplashAnimation = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.yellow,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circle: {
-    position: 'absolute',
-    width: width * 0.82,
-    height: width * 0.82,
-    borderRadius: width * 0.41,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.10,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  dot: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.60)',
-  },
-  content: {
-    alignItems: 'center',
-  },
-  sub: {
-    fontSize: 13,
-    color: '#6B3A1F',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  lettersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  letter: {
-    fontSize: 66,
-    fontWeight: '900',
-    color: '#1A1A1A',
-    marginHorizontal: 1,
-  },
-  underline: {
-    height: 3,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 2,
-    opacity: 0.70,
-  },
+  content: { width: '100%', paddingHorizontal: 8, alignItems: 'center', gap: 32 },
+  logoPulse: { alignItems: 'center' },
+  scene: { position: 'relative' },
+  shirt: { position: 'absolute' },
+  bag: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  sparkle: { position: 'absolute' },
+  truck: { position: 'absolute' },
+  road: { position: 'absolute', height: 1, backgroundColor: '#E7EBE8' },
+  track: { position: 'absolute', height: 4, backgroundColor: '#F0F2EF', overflow: 'hidden', borderRadius: 2 },
+  progress: { width: 120, height: 4, backgroundColor: '#FFD64B', borderRadius: 2 },
 });
 
 export default SplashAnimation;

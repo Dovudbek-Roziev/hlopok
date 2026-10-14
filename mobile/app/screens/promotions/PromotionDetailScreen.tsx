@@ -1,5 +1,6 @@
 // Aksiya tafsiloti — shu aksiyaga tegishli mahsulotlar / Promotion detail — products in this promotion
 import React from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text, Image, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +13,7 @@ import { useColors } from '../../theme/useColors';
 import { formatPrice } from '../../utils/format';
 
 const PromotionDetailScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
@@ -30,7 +32,7 @@ const PromotionDetailScreen = () => {
   if (isError || !promotion) {
     return (
       <YStack flex={1} backgroundColor={Colors.bg}>
-        <XStack backgroundColor={Colors.bg} paddingTop={52} paddingHorizontal={16} paddingBottom={10} alignItems="center" gap={12}>
+        <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={10} alignItems="center" gap={12}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <ChevronLeft color={Colors.black} size={24} />
           </TouchableOpacity>
@@ -52,7 +54,7 @@ const PromotionDetailScreen = () => {
   return (
     <ScreenWrapper>
     <YStack flex={1} backgroundColor={Colors.bg}>
-      <XStack backgroundColor={Colors.bg} paddingTop={52} paddingHorizontal={16} paddingBottom={10}
+      <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={10}
         alignItems="center" gap={12}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ChevronLeft color={Colors.black} size={24} />

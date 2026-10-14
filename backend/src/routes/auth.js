@@ -4,7 +4,6 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { adminOnly } = require('../middleware/admin');
 const ctrl = require('../controllers/authController');
-const { uploadAvatar } = require('../middleware/upload');
 
 router.post('/send-otp',                ctrl.sendOTP);
 router.post('/verify-otp',              ctrl.verifyOTP);
@@ -19,11 +18,13 @@ router.get ('/me',                          protect, ctrl.getMe);
 router.put ('/profile',                     protect, ctrl.updateProfile);
 router.put ('/change-password',             protect, ctrl.changePassword);
 router.put ('/change-email',                protect, ctrl.changeEmail);
-router.post('/avatar',                     protect, uploadAvatar.single('avatar'), ctrl.uploadAvatar);
 router.get ('/favorites',                   protect, ctrl.getFavorites);
+router.delete('/favorites',                 protect, ctrl.clearFavorites);
 router.post('/favorites/:productId',        protect, ctrl.toggleFavorite);
 router.post('/addresses',                   protect, ctrl.addAddress);
 router.delete('/addresses/:addressId',      protect, ctrl.deleteAddress);
 router.put('/push-token',                   protect, ctrl.savePushToken);
+router.post('/logout',                      protect, ctrl.logout);
+router.delete('/account',                   protect, ctrl.deleteAccount);
 
 module.exports = router;

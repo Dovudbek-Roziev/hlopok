@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import {
   ScrollView, TouchableOpacity, Linking, FlatList,
   RefreshControl, Dimensions, TextInput, NativeSyntheticEvent,
@@ -82,6 +83,7 @@ const SectionTitle = ({ title, onMore }: { title: string; onMore?: () => void })
 // ─────────────────────────────────────────────────────────────
 
 const HomeScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
@@ -193,12 +195,12 @@ const HomeScreen = () => {
       }
     >
       {/* ── Header ── */}
-      <YStack backgroundColor={Colors.bg} paddingTop={52} paddingBottom={14} paddingHorizontal={16}>
-        <XStack alignItems="center" justifyContent="space-between">
-          <HlopokLogo size="sm" />
+      <YStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingBottom={14} paddingLeft={12} paddingRight={16}>
+        <XStack alignItems="center" justifyContent="space-between" gap={16}>
+          <HlopokLogo size="header" align="left" />
           <TouchableOpacity
             onPress={() => { navigation.navigate('Notifications'); }}
-            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+            style={{ width: 40, height: 40, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
             <Bell color={Colors.black} size={22} />
             {notifCount > 0 && (
               <YStack

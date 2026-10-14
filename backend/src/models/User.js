@@ -64,6 +64,9 @@ const UserSchema = new mongoose.Schema({
 
   // Bonus balansi / Bonus balance (real KGZ som)
   bonusBalance: { type: Number, default: 0, min: 0 },
+  bonusExpiresAt: { type: Date },
+  bonusExpiryWarningSentAt: { type: Date },
+  bonusExpiryProcessedAt: { type: Date },
 
   // Jami tejaldi / Total saved with bonuses
   totalSaved: { type: Number, default: 0 },
@@ -79,6 +82,9 @@ const UserSchema = new mongoose.Schema({
 
   // Expo Push Token — mobil ilova bildirishnomalar uchun
   pushToken: { type: String, default: '' },
+  pushTokens: { type: [String], default: [] },
+
+  tokenVersion: { type: Number, default: 0 },
 
 }, { timestamps: true });
 

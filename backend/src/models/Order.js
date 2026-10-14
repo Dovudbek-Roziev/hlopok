@@ -32,6 +32,7 @@ const OrderSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  clientRequestId: { type: String, default: undefined },
 
   // Buyurtma elementlari / Order items
   items: [OrderItemSchema],
@@ -60,6 +61,7 @@ const OrderSchema = new mongoose.Schema({
   subtotal:    { type: Number, required: true },
   bonusUsed:   { type: Number, default: 0 },
   bonusEarned: { type: Number, default: 0 },
+  bonusEarnedAt: { type: Date, default: null },
   total:       { type: Number, required: true },
 
   // Holat / Status
@@ -100,5 +102,9 @@ OrderSchema.index({ user: 1, createdAt: -1 });
 OrderSchema.index({ user: 1, status: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ createdAt: -1 });
+OrderSchema.index(
+  { user: 1, clientRequestId: 1 },
+  { unique: true, partialFilterExpression: { clientRequestId: { $type: 'string' } } }
+);
 
 module.exports = mongoose.model('Order', OrderSchema);

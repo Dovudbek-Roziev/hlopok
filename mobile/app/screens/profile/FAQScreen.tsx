@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ const FaqItem = ({ item, lang }: any) => {
 };
 
 const FAQScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t, i18n } = useTranslation();
   const navigation  = useNavigation<any>();
@@ -56,7 +58,7 @@ const FAQScreen = () => {
     <YStack flex={1} backgroundColor={Colors.bg}>
 
       {/* Header */}
-      <YStack backgroundColor={Colors.yellow} paddingTop={50} paddingHorizontal={16} paddingBottom={20}>
+      <YStack backgroundColor={Colors.yellow} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={20}>
         <XStack alignItems="center" gap={10} marginBottom={14}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <ChevronLeft color={Colors.black} size={24} />

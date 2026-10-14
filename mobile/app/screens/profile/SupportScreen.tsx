@@ -1,10 +1,11 @@
 import React from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import {
-  ChevronLeft, ChevronRight, MessageCircle, Send,
+  ChevronLeft, ChevronRight, MessageCircle, Send, Mail,
   Camera, HelpCircle, Headphones,
 } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
@@ -12,6 +13,7 @@ import { useColors } from '../../theme/useColors';
 import { useStoreInfo } from '../../utils/useStoreInfo';
 
 const SupportScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -21,6 +23,7 @@ const SupportScreen = () => {
     { label: 'WhatsApp',  icon: MessageCircle, bg: '#25D366', url: STORE_INFO.whatsapp },
     { label: 'Telegram',  icon: Send,           bg: '#0088CC', url: STORE_INFO.telegram },
     { label: 'Instagram', icon: Camera,          bg: '#E1306C', url: STORE_INFO.instagram },
+    { label: 'Email',     icon: Mail,            bg: '#374151', url: 'mailto:hlopokosh@gmail.com' },
   ];
 
   return (
@@ -28,7 +31,7 @@ const SupportScreen = () => {
     <YStack flex={1} backgroundColor={Colors.bg}>
 
       {/* ── Yellow header with banner ── */}
-      <YStack backgroundColor={Colors.yellow} paddingTop={50} paddingHorizontal={16} paddingBottom={20}>
+      <YStack backgroundColor={Colors.yellow} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={20}>
         <XStack alignItems="center" gap={10} marginBottom={14}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <ChevronLeft color={Colors.black} size={24} />

@@ -6,6 +6,7 @@ import { toast } from '../components/Toast';
 import { Confirm } from '../components/Confirm';
 import { io } from 'socket.io-client';
 import api from '../api/client';
+import { fetchAllPages } from '../api/fetchAllPages';
 import { useAdminStore } from '../store/adminStore';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { sizeLabelBoth } from '../utils/sizeLabel';
@@ -59,8 +60,7 @@ const OrdersPage = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-orders', filter],
-    queryFn: () => api.get('/orders/all', { params: { status: filter || undefined, limit: 500 } }).then(r => r.data.orders),
-    refetchInterval: 30000,
+    queryFn: () => fetchAllPages('/orders/all', 'orders', { status: filter || undefined }),
   });
 
   const updateStatus = useMutation({
@@ -85,10 +85,11 @@ const OrdersPage = () => {
   });
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     const socket = io(socketUrl, { auth: { token } });
     socket.on('connect', () => socket.emit('join_admin'));
     socket.on('new_order', () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }));
+    socket.on('order_status_updated', () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }));
     return () => { socket.disconnect(); };
   }, [token]);
 
@@ -216,8 +217,7 @@ const OrdersPage = () => {
                   color: order.deliveryType === 'delivery' ? '#1E40AF' : '#15803D' }}>
                   {order.deliveryType === 'delivery' ? t('orders.deliveryType') : t('orders.pickupType')}
                 </span>
-                {order.paymentMethod === 'online' ? (
-                  order.paymentConfirmed ? (
+                {order.paymentConfirmed ? (
                     <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
                       backgroundColor: '#DCFCE7', color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                       <Check size={11} />{t('orders.paymentConfirmed')}
@@ -233,12 +233,6 @@ const OrdersPage = () => {
                         backgroundColor: '#DBEAFE', color: '#1E40AF', border: '1.5px solid #93C5FD', cursor: 'pointer' }}>
                       {t('orders.confirmPayment')}
                     </button>
-                  )
-                ) : (
-                  <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                    backgroundColor: '#DCFCE7', color: '#15803D' }}>
-                    {t('orders.cash')}
-                  </span>
                 )}
               </div>
             </div>
@@ -428,20 +422,18 @@ const OrdersPage = () => {
                   {selected.paymentMethod === 'online' ? <CreditCard size={13} /> : <Banknote size={13} />}
                   {selected.paymentMethod === 'online' ? t('orders.online') : t('orders.cash')}
                 </span>
-                {selected.paymentMethod === 'online' && (
-                  selected.paymentConfirmed ? (
+                {selected.paymentConfirmed ? (
                     <span style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                       backgroundColor: '#DCFCE7', color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <Check size={11} />{t('orders.paymentConfirmed')}
                     </span>
-                  ) : (
+                  ) : selected.status !== 'cancelled' ? (
                     <button onClick={() => confirmPayment.mutate(selected._id)}
                       style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                         backgroundColor: '#2563EB', color: '#fff', border: 'none', cursor: 'pointer' }}>
                       {t('orders.confirmPayment')}
                     </button>
-                  )
-                )}
+                  ) : null}
               </div>
 
               {/* Items */}

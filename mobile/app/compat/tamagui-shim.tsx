@@ -14,6 +14,7 @@ import {
   ViewStyle,
   TextStyle,
   ImageStyle,
+  StyleSheet,
 } from 'react-native';
 
 // ─── Token resolver ──────────────────────────────────────────────────────────
@@ -170,7 +171,7 @@ export const Spinner = ({ size, color, ...p }: any) => (
 export const Image = ({ src, source, style, resizeMode, ...p }: any) => (
   <RNImage
     source={src ? { uri: src } : source}
-    style={[collectView(p), style as ImageStyle]}
+    style={[collectView(p) as ImageStyle, StyleSheet.flatten(style) as ImageStyle]}
     resizeMode={resizeMode ?? 'cover'}
   />
 );

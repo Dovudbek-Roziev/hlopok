@@ -94,7 +94,7 @@ const BrandsPage = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-brands'],
-    queryFn: () => api.get('/brands').then(r => r.data.brands),
+    queryFn: () => api.get('/brands/all').then(r => r.data.brands),
   });
 
   const deleteMutation = useMutation({

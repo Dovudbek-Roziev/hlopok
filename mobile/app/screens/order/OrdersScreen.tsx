@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { FlatList, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
@@ -9,6 +10,7 @@ import { Package, ChevronRight, SlidersHorizontal } from 'lucide-react-native';
 import { ordersApi } from '../../api/orders';
 import { useColors } from '../../theme/useColors';
 import { formatPrice, formatDate } from '../../utils/format';
+import { useAuthStore } from '../../store/authStore';
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   pending:   { bg: '#FFF3DC', text: '#E6A800' },
@@ -21,16 +23,39 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
 const STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'cancelled'];
 
 const OrdersScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t }      = useTranslation();
   const navigation = useNavigation<any>();
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const [filterOpen, setFilterOpen]     = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['my-orders'],
     queryFn: () => ordersApi.getMyOrders().then(r => r.data.orders),
+    enabled: isAuthenticated,
   });
+
+  if (!isAuthenticated) {
+    return (
+      <ScreenWrapper>
+        <YStack flex={1} backgroundColor={Colors.bg} alignItems="center" justifyContent="center" gap={14} padding={32}>
+          <Package color={Colors.grayLight} size={64} />
+          <Text fontSize={18} fontWeight="700" color={Colors.black} textAlign="center">
+            {t('auth.loginToAccount')}
+          </Text>
+          <Text fontSize={14} color={Colors.gray} textAlign="center">
+            {t('auth.loginToAccountDesc')}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('AuthNavigator')}
+            style={{ backgroundColor: Colors.yellow, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}>
+            <Text fontWeight="700" color={Colors.black}>{t('auth.login')}</Text>
+          </TouchableOpacity>
+        </YStack>
+      </ScreenWrapper>
+    );
+  }
 
   const allOrders = data || [];
   const orders = statusFilter ? allOrders.filter((o: any) => o.status === statusFilter) : allOrders;
@@ -73,7 +98,7 @@ const OrdersScreen = () => {
     <YStack flex={1} backgroundColor={Colors.bg}>
 
       {/* ── Top bar ── */}
-      <XStack backgroundColor={Colors.bg} paddingTop={52} paddingHorizontal={16} paddingBottom={6}
+      <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={6}
         alignItems="center" justifyContent="center">
         <Text fontSize={18} fontWeight="700" color={Colors.black}>{t('orders.title')}</Text>
       </XStack>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Animated, StatusBar } from 'react-native';
 import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ const Field = ({ label, icon: Icon, error, ...props }: any) => (
 );
 
 const LoginScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
@@ -80,10 +82,10 @@ const LoginScreen = () => {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
 
         {/* ── Yellow hero ── */}
-        <YStack backgroundColor="#FFD700" paddingTop={54} paddingBottom={52} alignItems="center" gap={6}>
+        <YStack backgroundColor="#FFD700" paddingTop={headerTopPadding} paddingBottom={52} alignItems="center" gap={6}>
           <TouchableOpacity
             onPress={() => navigation.getParent?.()?.goBack?.()}
-            style={{ position: 'absolute', top: 54, right: 20, width: 36, height: 36,
+            style={{ position: 'absolute', top: headerTopPadding, right: 20, width: 36, height: 36,
               borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.08)',
               alignItems: 'center', justifyContent: 'center' }}>
             <X color="#1A1A1A" size={18} />

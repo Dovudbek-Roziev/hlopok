@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Plus, X, QrCode, Smartphone, Gift, TrendingUp, Wallet, Users, Settings, Save } from 'lucide-react';
 import api from '../api/client';
+import { fetchAllPages } from '../api/fetchAllPages';
 import { toast } from '../components/Toast';
 import QRScanner from '../components/QRScanner';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -44,12 +45,22 @@ const BonusPage = () => {
 
   const { data: txData } = useQuery({
     queryKey: ['bonus-transactions'],
-    queryFn: () => api.get('/bonus/transactions?limit=100').then(r => r.data),
+    queryFn: async () => ({
+      transactions: await fetchAllPages('/bonus/transactions', 'transactions'),
+    }),
+    refetchInterval: 30000,
+  });
+
+  const { data: transactionStats } = useQuery({
+    queryKey: ['bonus-transaction-stats'],
+    queryFn: () => api.get('/bonus/transactions/stats').then(r => r.data.stats),
+    refetchInterval: 30000,
   });
 
   const { data: usersData } = useQuery({
-    queryKey: ['admin-users-short'],
-    queryFn: () => api.get('/admin/users?limit=500').then(r => r.data.users),
+    queryKey: ['admin-users-short', userSearch.trim()],
+    queryFn: () => api.get('/admin/users', { params: { limit: 20, search: userSearch.trim() } }).then(r => r.data.users),
+    enabled: showUserList && userSearch.trim().length >= 2,
   });
 
   const [bonusForm, setBonusForm] = useState({
@@ -76,6 +87,7 @@ const BonusPage = () => {
     mutationFn: () => api.post('/bonus/add', { userId, amount: Number(amount), note: reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bonus-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['bonus-transaction-stats'] });
       setShowAdd(false); setUserId(''); setAmount(''); setReason('');
       setScannedName(''); setSelectedUser(null); setUserSearch(''); setShowUserList(false);
       toast.success(t('bonus.addSuccess'));
@@ -99,16 +111,11 @@ const BonusPage = () => {
   const transactions  = txData?.transactions || [];
   const users         = usersData || [];
 
-  const totalGiven = transactions.filter((tx: any) => tx.type === 'earned' || tx.type === 'admin_add').reduce((s: number, tx: any) => s + tx.amount, 0);
-  const totalRefunded = transactions.filter((tx: any) => tx.type === 'refund').reduce((s: number, tx: any) => s + tx.amount, 0);
-  const totalUsed  = Math.max(0, transactions.filter((tx: any) => tx.type === 'used').reduce((s: number, tx: any) => s + tx.amount, 0) - totalRefunded);
-  const usersWithBonus = new Set(transactions.map((tx: any) => tx.user?._id)).size;
+  const totalGiven = transactionStats?.totalGiven ?? 0;
+  const totalUsed = transactionStats?.totalUsed ?? 0;
+  const usersWithBonus = transactionStats?.usersWithBonus ?? 0;
 
-  const filteredUsers = users.filter((u: any) => {
-    const q = userSearch.toLowerCase();
-    return (u.firstName + ' ' + u.lastName).toLowerCase().includes(q) ||
-      (u.phone || '').includes(q) || (u.email || '').toLowerCase().includes(q);
-  }).slice(0, 20);
+  const filteredUsers = users;
 
   const selectUser = (u: any) => { setUserId(u._id); setSelectedUser(u); setUserSearch(''); setShowUserList(false); };
   const clearUser  = ()       => { setUserId(''); setSelectedUser(null); setUserSearch(''); };

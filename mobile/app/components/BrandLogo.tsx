@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image } from 'react-native';
+import { View } from 'react-native';
+import HlopokLogo from './HlopokLogo';
 
 interface Props {
   size?: 'small' | 'medium' | 'large';
@@ -14,11 +15,9 @@ const SIZES = {
 const BrandLogo = ({ size = 'large' }: Props) => {
   const { width, height } = SIZES[size];
   return (
-    <Image
-      source={require('../../assets/logo.png')}
-      style={{ width, height }}
-      resizeMode="contain"
-    />
+    <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+      <HlopokLogo size="lg" />
+    </View>
   );
 };
 

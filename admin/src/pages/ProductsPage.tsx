@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, Edit2, Trash2, X, Search, Package } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, Package, Eye, EyeOff } from 'lucide-react';
 import api from '../api/client';
+import { fetchAllAdminProducts } from '../api/products';
 import { toast } from '../components/Toast';
 import { Confirm } from '../components/Confirm';
 
@@ -225,18 +226,49 @@ const ProductsPage = () => {
   const [showForm, setShowForm]   = useState(false);
   const [editing, setEditing]     = useState<any>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [search, setSearch]       = useState('');
   const [catFilter, setCatFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'hidden' | 'all'>('active');
   const queryClient = useQueryClient();
 
-  const { data: products, isLoading }   = useQuery({ queryKey: ['admin-products'], queryFn: () => api.get('/products?limit=500&isActive=all').then(r => r.data.products) });
+  const { data: products, isLoading }   = useQuery({ queryKey: ['admin-products'], queryFn: fetchAllAdminProducts });
   const { data: categories } = useQuery({ queryKey: ['categories'],     queryFn: () => api.get('/categories').then(r => r.data.categories) });
   const { data: brands }     = useQuery({ queryKey: ['brands'],         queryFn: () => api.get('/brands').then(r => r.data.brands) });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/products/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-products'] }); toast.success(t('products.deleted')); },
-    onError:   () => toast.error(t('common.error')),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData(['admin-products'], (current: any[] | undefined) => current?.map(product => product._id === id ? { ...product, isActive: false } : product));
+      setSelectedIds(ids => ids.filter(selectedId => selectedId !== id));
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success(t('products.deleted'));
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || t('common.error')),
+  });
+
+  const visibilityMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => api.patch(`/products/${id}/visibility`, { isActive }),
+    onSuccess: (response, variables) => {
+      const updated = response.data.product;
+      queryClient.setQueryData(['admin-products'], (current: any[] | undefined) => current?.map(product => product._id === variables.id ? updated : product));
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success(t(variables.isActive ? 'products.restored' : 'products.deleted'));
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || t('common.error')),
+  });
+
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async (ids: string[]) => (await api.post('/products/bulk-archive', { ids })).data,
+    onSuccess: ({ archived }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setSelectedIds([]);
+      setShowBulkConfirm(false);
+      toast.success(t('products.bulkDeleted', { count: archived }));
+    },
+    onError: () => toast.error(t('common.error')),
   });
 
   const onSaved = () => {
@@ -250,8 +282,11 @@ const ProductsPage = () => {
       (p.name_ru || '').toLowerCase().includes(search.toLowerCase()) ||
       p.name_ky?.toLowerCase().includes(search.toLowerCase());
     const matchCat = !catFilter || p.category?._id === catFilter;
-    return matchSearch && matchCat;
+    const matchStatus = statusFilter === 'all' || (statusFilter === 'active' ? p.isActive : !p.isActive);
+    return matchSearch && matchCat && matchStatus;
   });
+  const selectable = filtered.filter((p: any) => p.isActive);
+  const allVisibleSelected = selectable.length > 0 && selectable.every((p: any) => selectedIds.includes(p._id));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -270,6 +305,16 @@ const ProductsPage = () => {
           <Plus size={16} /> {t('products.add')}
         </button>
       </div>
+
+      {selectedIds.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '10px 12px', backgroundColor: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 8 }}>
+          <span style={{ color: '#7C2D12', fontSize: 13, fontWeight: 600 }}>{t('products.selectedCount', { count: selectedIds.length })}</span>
+          <button onClick={() => setShowBulkConfirm(true)} disabled={bulkArchiveMutation.isPending} title={t('products.bulkDelete')} aria-label={t('products.bulkDelete')}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', backgroundColor: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 7, color: '#B91C1C', cursor: 'pointer', fontWeight: 600, opacity: bulkArchiveMutation.isPending ? 0.6 : 1 }}>
+            <Trash2 size={15} /> {bulkArchiveMutation.isPending ? t('products.bulkDeleting') : t('products.bulkDelete')}
+          </button>
+        </div>
+      )}
 
       {/* Qidiruv + Filtr */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -290,6 +335,14 @@ const ProductsPage = () => {
           <option value="">{t('products.allCategories')}</option>
           {(categories || []).map((c: any) => <option key={c._id} value={c._id}>{isKy ? (c.name_ky || c.name_ru) : c.name_ru}</option>)}
         </select>
+        <select aria-label={t('products.filterStatus')} value={statusFilter} onChange={e => setStatusFilter(e.target.value as 'active' | 'hidden' | 'all')} style={{
+          padding: '11px 14px', backgroundColor: '#fff', border: '1.5px solid #E5E5E5',
+          borderRadius: 10, color: '#1A1A1A', fontSize: 14, minWidth: 160,
+        }}>
+          <option value="active">{t('products.showActive')}</option>
+          <option value="hidden">{t('products.showHidden')}</option>
+          <option value="all">{t('products.showAll')}</option>
+        </select>
       </div>
 
       {/* Jadval */}
@@ -298,14 +351,19 @@ const ProductsPage = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #F0F0F0', backgroundColor: '#FAFAFA' }}>
-                {[t('products.image'), t('products.name'), t('products.category'), t('products.status'), ''].map(h => (
-                  <th key={h} style={{ padding: '11px 16px', textAlign: 'left', color: '#9E9E9E', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.3px', textTransform: 'uppercase' }}>{h}</th>
+                {['select', t('products.image'), t('products.name'), t('products.category'), t('products.status'), ''].map(h => (
+                  <th key={h} style={{ padding: '11px 12px', textAlign: 'left', color: '#9E9E9E', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                    {h === 'select' ? <input type="checkbox" checked={allVisibleSelected} disabled={selectable.length === 0} aria-label={t('products.selectVisible')} title={t('products.selectVisible')}
+                      onChange={e => setSelectedIds(current => e.target.checked ? [...new Set([...current, ...selectable.map((p: any) => p._id)])] : current.filter(id => !selectable.some((p: any) => p._id === id)))} /> : h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((p: any) => (
                 <tr key={p._id} className="tr-hover" style={{ borderBottom: '1px solid #F5F5F5' }}>
+                  <td style={{ padding: '10px 12px' }}><input type="checkbox" checked={selectedIds.includes(p._id)} disabled={!p.isActive} aria-label={t('products.selectProduct', { name: isKy ? (p.name_ky || p.name_ru) : p.name_ru })}
+                    onChange={e => setSelectedIds(current => e.target.checked ? [...current, p._id] : current.filter(id => id !== p._id))} /></td>
                   <td style={{ padding: '10px 16px' }}>
                     {p.images?.[0]
                       ? <img src={p.images[0]} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }} />
@@ -339,9 +397,15 @@ const ProductsPage = () => {
                         style={{ padding: '6px 10px', backgroundColor: '#FFF9E6', border: '1px solid #FFD700', borderRadius: 8, cursor: 'pointer', color: '#1A1A1A' }}>
                         <Edit2 size={14} />
                       </button>
-                      <button onClick={() => setConfirmId(p._id)}
-                        style={{ padding: '6px 10px', backgroundColor: '#FFF0F0', border: '1px solid #FFCDD2', borderRadius: 8, cursor: 'pointer', color: '#E53935' }}>
-                        <Trash2 size={14} />
+                      <button
+                        onClick={() => p.isActive
+                          ? setConfirmId(p._id)
+                          : visibilityMutation.mutate({ id: p._id, isActive: true })}
+                        disabled={deleteMutation.isPending || visibilityMutation.isPending}
+                        title={t(p.isActive ? 'products.hide' : 'products.restore')}
+                        aria-label={t(p.isActive ? 'products.hide' : 'products.restore')}
+                        style={{ padding: '6px 10px', backgroundColor: p.isActive ? '#FFF0F0' : '#ECFDF5', border: `1px solid ${p.isActive ? '#FFCDD2' : '#A7F3D0'}`, borderRadius: 8, cursor: 'pointer', color: p.isActive ? '#E53935' : '#047857' }}>
+                        {p.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
                   </td>
@@ -365,8 +429,17 @@ const ProductsPage = () => {
 
       {confirmId && (
         <Confirm
+          message={t('products.deleteConfirm')}
           onConfirm={() => { deleteMutation.mutate(confirmId!); setConfirmId(null); }}
           onCancel={() => setConfirmId(null)}
+        />
+      )}
+
+      {showBulkConfirm && (
+        <Confirm
+          message={t('products.bulkDeleteConfirm', { count: selectedIds.length })}
+          onConfirm={() => bulkArchiveMutation.mutate(selectedIds)}
+          onCancel={() => setShowBulkConfirm(false)}
         />
       )}
     </div>

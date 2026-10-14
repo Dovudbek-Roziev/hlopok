@@ -4,7 +4,7 @@ import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, Heart, Share2, ShoppingCart, ChevronDown, ChevronUp, Star, MessageSquare, X, PackageX } from 'lucide-react-native';
+import { ChevronLeft, Heart, Share2, ShoppingCart, ChevronDown, ChevronUp, Star, MessageSquare, X, PackageX, Minus, Plus } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { productsApi, activePromosApi } from '../../api/products';
 import { authApi } from '../../api/auth';
@@ -14,6 +14,7 @@ import { useColors } from '../../theme/useColors';
 import { formatPrice } from '../../utils/format';
 import { getColorName } from '../../utils/colorName';
 import { getSizeLabel } from '../../utils/sizeLabel';
+import SizeGuideModal from '../../components/SizeGuideModal';
 
 const { width } = Dimensions.get('window');
 
@@ -28,14 +29,16 @@ const ProductScreen = () => {
 
   const [selectedSize, setSize]     = useState('');
   const [selectedColor, setColor]   = useState('');
+  const [quantity, setQuantity]     = useState(1);
   const [imgIndex, setImgIndex]     = useState(0);
   const [cartError, setCartError]   = useState('');
   const [cartSuccess, setCartSuccess] = useState(false);
   const [descOpen, setDescOpen]     = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   const lang = i18n.language === 'ky' ? 'ky' : 'ru';
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['product', id],
     queryFn: () => productsApi.getProduct(id).then(r => r.data.product),
   });
@@ -62,9 +65,12 @@ const ProductScreen = () => {
     return (
       <YStack flex={1} backgroundColor={Colors.bg} alignItems="center" justifyContent="center" gap={14} paddingHorizontal={32}>
         <Text fontSize={16} color={Colors.gray} textAlign="center">{t('common.error')}</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}
+        <TouchableOpacity onPress={() => refetch()}
           style={{ backgroundColor: Colors.yellow, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}>
-          <Text fontWeight="700" color={Colors.black}>{t('common.back')}</Text>
+          <Text fontWeight="700" color={Colors.black}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text fontWeight="600" color={Colors.gray}>{t('common.back')}</Text>
         </TouchableOpacity>
       </YStack>
     );
@@ -93,11 +99,13 @@ const ProductScreen = () => {
   const sizesForColor = variants.filter((v: any) => (v.color || '') === colorKey && v.stock > 0);
 
   const maxStock = selectedSize
-    ? variants.find((v: any) => v.size === selectedSize && v.color === colorKey)?.stock || 0
+    ? variants.find((v: any) => v.size === selectedSize && (v.color || '') === colorKey)?.stock || 0
     : 0;
+  const selectedQuantity = Math.max(1, Math.min(quantity, maxStock || 1));
 
   const handleSelectColor = (color: string) => {
     setColor(color);
+    setQuantity(1);
     const stillValid = variants.some((v: any) => v.size === selectedSize && v.color === color && v.stock > 0);
     if (!stillValid) setSize('');
   };
@@ -156,7 +164,7 @@ const ProductScreen = () => {
       price: currentPrice,
       size: selectedSize,
       color: selectedColor,
-      qty: 1,
+      qty: selectedQuantity,
       maxStock,
       promotionId: hasDiscount ? activePromoId : undefined,
     });
@@ -324,13 +332,18 @@ const ProductScreen = () => {
           {/* Sizes + Size guide button */}
           {(!hasColors || selectedColor) && (
             <YStack gap={10}>
-              <Text fontSize={14} fontWeight="600" color={Colors.black}>{t('product.size')}</Text>
+              <XStack alignItems="center" justifyContent="space-between">
+                <Text fontSize={14} fontWeight="600" color={Colors.black}>{t('product.size')}</Text>
+                <TouchableOpacity onPress={() => setSizeGuideOpen(true)} hitSlop={8}>
+                  <Text fontSize={12} fontWeight="600" color={Colors.green}>{t('sizeGuide.title')}</Text>
+                </TouchableOpacity>
+              </XStack>
               {sizesForColor.length === 0 ? (
                 <Text color={Colors.gray} fontSize={13}>{t('product.outOfStock')}</Text>
               ) : (
                 <XStack gap={8} flexWrap="wrap">
                   {sizesForColor.map((v: any) => (
-                    <TouchableOpacity key={v.size} onPress={() => setSize(v.size)}
+                    <TouchableOpacity key={v.size} onPress={() => { setSize(v.size); setQuantity(1); }}
                       style={{
                         minWidth: 64, height: 44, borderRadius: 10,
                         borderWidth: 1.5,
@@ -350,6 +363,35 @@ const ProductScreen = () => {
           )}
           {hasColors && !selectedColor && (
             <Text color={Colors.gray} fontSize={13}>{t('product.selectColorFirst')}</Text>
+          )}
+
+          {selectedSize && maxStock > 0 && (
+            <XStack alignItems="center" justifyContent="space-between" backgroundColor={Colors.bg}
+              borderRadius={10} paddingHorizontal={12} paddingVertical={10}>
+              <YStack gap={2}>
+                <Text fontSize={13} fontWeight="600" color={Colors.black}>
+                  {t('product.availableStock', { count: maxStock })}
+                </Text>
+                <Text fontSize={11} color={Colors.gray}>{t('product.quantity')}</Text>
+              </YStack>
+              <XStack alignItems="center" gap={12}>
+                <TouchableOpacity onPress={() => setQuantity(q => Math.max(1, q - 1))}
+                  disabled={selectedQuantity <= 1}
+                  style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.white,
+                    alignItems: 'center', justifyContent: 'center', opacity: selectedQuantity <= 1 ? 0.4 : 1 }}>
+                  <Minus color={Colors.black} size={16} />
+                </TouchableOpacity>
+                <Text minWidth={22} textAlign="center" fontSize={16} fontWeight="700" color={Colors.black}>
+                  {selectedQuantity}
+                </Text>
+                <TouchableOpacity onPress={() => setQuantity(q => Math.min(maxStock, q + 1))}
+                  disabled={selectedQuantity >= maxStock}
+                  style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.yellow,
+                    alignItems: 'center', justifyContent: 'center', opacity: selectedQuantity >= maxStock ? 0.4 : 1 }}>
+                  <Plus color={Colors.black} size={16} />
+                </TouchableOpacity>
+              </XStack>
+            </XStack>
           )}
 
           <YStack height={1} backgroundColor={Colors.border} />
@@ -426,12 +468,15 @@ const ProductScreen = () => {
           </TouchableOpacity>
           <YStack alignItems="flex-end">
             <Text color={Colors.gray} fontSize={11}>{t('product.total')}</Text>
-            <Text fontWeight="700" color={Colors.black} fontSize={16}>{formatPrice(currentPrice)}</Text>
+            <Text fontWeight="700" color={Colors.black} fontSize={16}>
+              {formatPrice(currentPrice * (selectedSize ? selectedQuantity : 1))}
+            </Text>
           </YStack>
         </XStack>
       </YStack>
 
     </YStack>
+    <SizeGuideModal visible={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
     </ScreenWrapper>
   );
 };

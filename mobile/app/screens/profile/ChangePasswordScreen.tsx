@@ -1,5 +1,6 @@
 // Parol o'zgartirish ekrani / Change password screen
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { YStack, XStack, Text, Input, Button, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
@@ -7,12 +8,15 @@ import { useNavigation } from '@react-navigation/native';
 import { ChevronLeft } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { authApi } from '../../api/auth';
+import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../theme/useColors';
 
 const ChangePasswordScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors = useColors();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const { setUser } = useAuthStore();
 
   const [old_, setOld]        = useState('');
   const [newP, setNew]        = useState('');
@@ -28,7 +32,8 @@ const ChangePasswordScreen = () => {
     setError('');
     setLoading(true);
     try {
-      await authApi.changePassword(old_, newP);
+      const response = await authApi.changePassword(old_, newP);
+      setUser(response.data.user, response.data.token);
       setSuccess(true);
       setTimeout(() => navigation.goBack(), 1500);
     } catch (err: any) {
@@ -42,7 +47,7 @@ const ChangePasswordScreen = () => {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScreenWrapper>
       <YStack flex={1} backgroundColor={Colors.bg}>
-        <XStack backgroundColor={Colors.bg} paddingTop={50} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
+        <XStack backgroundColor={Colors.bg} paddingTop={headerTopPadding} paddingHorizontal={16} paddingBottom={16} alignItems="center" gap={12}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <ChevronLeft color={Colors.black} size={24} />
           </TouchableOpacity>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
+import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Star, MessageSquare } from 'lucide-react-native';
+import { ChevronLeft, Star, MessageSquare, User } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { productsApi } from '../../api/products';
 import { useAuthStore } from '../../store/authStore';
@@ -35,16 +36,10 @@ const ReviewCard = ({ review }: { review: any }) => {
   return (
     <YStack backgroundColor={Colors.white} borderRadius={14} padding={14} gap={8}>
       <XStack alignItems="center" gap={10}>
-        {review.user?.avatar ? (
-          <Image source={{ uri: review.user.avatar }} width={40} height={40} borderRadius={20} />
-        ) : (
-          <YStack width={40} height={40} borderRadius={20} backgroundColor={Colors.yellow}
-            alignItems="center" justifyContent="center">
-            <Text fontWeight="700" color={Colors.black} fontSize={16}>
-              {(review.user?.firstName || '?')[0].toUpperCase()}
-            </Text>
-          </YStack>
-        )}
+        <YStack width={40} height={40} borderRadius={20} backgroundColor={Colors.yellow}
+          alignItems="center" justifyContent="center">
+          <User color={Colors.black} size={20} strokeWidth={1.8} />
+        </YStack>
         <YStack flex={1}>
           <Text fontWeight="600" color={Colors.black} fontSize={14}>
             {review.user?.firstName} {review.user?.lastName}
@@ -66,6 +61,7 @@ const ReviewCard = ({ review }: { review: any }) => {
 
 // ─── Asosiy ekran / Main screen ───────────────────────────────────
 const ReviewsScreen = () => {
+  const headerTopPadding = useHeaderTopPadding();
   const Colors      = useColors();
   const { t }       = useTranslation();
   const navigation  = useNavigation<any>();
@@ -122,7 +118,7 @@ const ReviewsScreen = () => {
     <ScreenWrapper>
     <YStack flex={1} backgroundColor={Colors.bg}>
       {/* Header */}
-      <XStack backgroundColor={Colors.white} paddingTop={50} paddingHorizontal={16}
+      <XStack backgroundColor={Colors.white} paddingTop={headerTopPadding} paddingHorizontal={16}
         paddingBottom={14} alignItems="center" gap={12}
         style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, elevation: 3 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

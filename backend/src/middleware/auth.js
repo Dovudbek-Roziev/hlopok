@@ -20,6 +20,9 @@ const protect = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: msg(req, 'Аккаунт заблокирован', 'Аккаунт бөгөттөлгөн') });
     }
+    if ((user.tokenVersion || 0) !== (decoded.tokenVersion || 0)) {
+      return res.status(401).json({ success: false, message: msg(req, 'Войдите заново', 'Кайра кириңиз') });
+    }
 
     req.user = user;
     next();
@@ -35,7 +38,7 @@ const optionalAuth = async (req, res, next) => {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id);
-      if (user && user.isActive) req.user = user;
+      if (user && user.isActive && (user.tokenVersion || 0) === (decoded.tokenVersion || 0)) req.user = user;
     }
   } catch {}
   next();

@@ -1,10 +1,31 @@
 const { cloudinary } = require('../services/cloudinaryService');
+const { Readable } = require('stream');
 
-// Rasm yuklash / Upload image (preset cheklovlariga tegmaslik uchun yuklash parametrlarisiz)
-// Upload without extra params, so the unsigned upload preset never rejects the request
+const isSupportedImage = (buffer, mimetype) => {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  if (mimetype === 'image/png') {
+    return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  }
+  if (mimetype === 'image/jpeg' || mimetype === 'image/jpg') {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  if (mimetype === 'image/webp') {
+    return buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+  }
+  return false;
+};
+
 const uploadToCloudinary = async (buffer, mimetype, folder) => {
-  const b64 = `data:${mimetype};base64,${buffer.toString('base64')}`;
-  const result = await cloudinary.uploader.unsigned_upload(b64, 'hlopok', { folder });
+  if (!isSupportedImage(buffer, mimetype)) {
+    throw new Error('Invalid image file');
+  }
+  const result = await new Promise((resolve, reject) => {
+    const upload = cloudinary.uploader.upload_stream(
+      { folder, resource_type: 'image' },
+      (error, response) => error ? reject(error) : resolve(response)
+    );
+    Readable.from(buffer).pipe(upload);
+  });
   return addCompression(result.secure_url);
 };
 

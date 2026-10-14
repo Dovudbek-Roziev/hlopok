@@ -12,5 +12,6 @@ router.post('/add',          protect, adminOnly, ctrl.addBonusManual);
 router.post('/find-by-qr',   protect, adminOnly, ctrl.findByQR);
 router.post('/extend',       protect, adminOnly, ctrl.extendExpiry);
 router.get ('/transactions', protect, adminOnly, ctrl.getAllTransactions);
+router.get ('/transactions/stats', protect, adminOnly, ctrl.getTransactionStats);
 
 module.exports = router;
