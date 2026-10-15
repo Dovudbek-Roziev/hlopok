@@ -24,6 +24,8 @@ const BonusTransactionSchema = new mongoose.Schema({
   description_ky: { type: String, default: '' },
 }, { timestamps: true });
 
+BonusTransactionSchema.index({ user: 1, createdAt: -1 });
+
 // Bonus sozlamalari / Bonus settings (faqat bitta yozuv / only one record)
 const BonusSettingsSchema = new mongoose.Schema({
   bonusPercent: { type: Number, default: 5 },       // 5%

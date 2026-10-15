@@ -85,8 +85,13 @@ const UserSchema = new mongoose.Schema({
   pushTokens: { type: [String], default: [] },
 
   tokenVersion: { type: Number, default: 0 },
+  checkoutVersion: { type: Number, default: 0 },
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  marketingPush: { type: Boolean, default: false },
 
 }, { timestamps: true });
+
+UserSchema.index({ phone: 1 }, { name: 'unique_active_phone', unique: true, partialFilterExpression: { phone: { $type: 'string', $gt: '' } } });
 
 // Parolni saqlashdan oldin hash qilish / Hash password before save
 UserSchema.pre('save', async function (next) {

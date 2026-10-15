@@ -17,7 +17,7 @@ const { sendPushNotification } = require('../utils/pushNotification');
 exports.getUsers = async (req, res) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
-    const safeLimit = Math.min(Number(limit) || 20, 500);
+    const safeLimit = Math.max(1, Math.min(Math.floor(Number(limit)) || 20, 500));
     const filter = { role: 'user' };
     if (search) {
       const safe = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -28,7 +28,7 @@ exports.getUsers = async (req, res) => {
       ];
     }
 
-    const skip = (Number(page) - 1) * safeLimit;
+    const skip = (Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)) - 1) * safeLimit;
     const [users, total] = await Promise.all([
       User.find(filter)
         .select('-password -qrCode -avatar')
@@ -40,7 +40,7 @@ exports.getUsers = async (req, res) => {
 
     res.json({
       success: true, users,
-      pagination: { page: Number(page), limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
+      pagination: { page: Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)), limit: safeLimit, total, pages: Math.ceil(total / safeLimit) },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });
@@ -69,7 +69,7 @@ exports.pushBroadcast = async (req, res) => {
       return res.status(400).json({ success: false, message: msg(req, 'Заполните все поля', 'Бардык талааларды толтуруңуз') });
     }
 
-    let query = { $or: [{ pushToken: { $exists: true, $nin: [null, ''] } }, { 'pushTokens.0': { $exists: true } }], isActive: true };
+    let query = { marketingPush: true, $or: [{ pushToken: { $exists: true, $nin: [null, ''] } }, { 'pushTokens.0': { $exists: true } }], isActive: true };
 
     if (target === 'active') {
       const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
@@ -168,6 +168,8 @@ exports.toggleUserBlock = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: msg(req, 'Пользователь не найден', 'Колдонуучу табылган жок') });
 
     user.isActive = !user.isActive;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    if (!user.isActive) { user.pushToken = ''; user.pushTokens = []; }
     await user.save();
     if (!user.isActive) req.app.get('io')?.in(`user_${user._id}`).disconnectSockets(true);
 

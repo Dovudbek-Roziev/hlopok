@@ -5,6 +5,7 @@ const ReviewSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   rating:  { type: Number, required: true, min: 1, max: 5 },
   comment: { type: String, default: '', maxlength: 300, trim: true },
+  approved: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // Bir foydalanuvchi bir mahsulotga faqat bir marta

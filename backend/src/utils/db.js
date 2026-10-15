@@ -11,6 +11,10 @@ const connectDB = async () => {
   if (!cached.promise) {
     cached.promise = mongoose.connect(process.env.MONGODB_URI, {
       bufferCommands: false,
+      autoIndex: process.env.NODE_ENV !== 'production',
+      autoCreate: process.env.NODE_ENV !== 'production',
+      maxPoolSize: 20,
+      serverSelectionTimeoutMS: 10000,
     });
   }
   try {

@@ -1,5 +1,6 @@
 const { cloudinary } = require('../services/cloudinaryService');
 const { Readable } = require('stream');
+const sharp = require('sharp');
 
 const isSupportedImage = (buffer, mimetype) => {
   if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
@@ -17,14 +18,20 @@ const isSupportedImage = (buffer, mimetype) => {
 
 const uploadToCloudinary = async (buffer, mimetype, folder) => {
   if (!isSupportedImage(buffer, mimetype)) {
-    throw new Error('Invalid image file');
+    throw Object.assign(new Error('Invalid image file'), { statusCode: 400 });
   }
+  let decoded;
+  try {
+    decoded = await sharp(buffer, { limitInputPixels: 25000000, animated: false })
+      .rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 }).toBuffer();
+  } catch { throw Object.assign(new Error('Invalid image file'), { statusCode: 400 }); }
   const result = await new Promise((resolve, reject) => {
     const upload = cloudinary.uploader.upload_stream(
       { folder, resource_type: 'image' },
       (error, response) => error ? reject(error) : resolve(response)
     );
-    Readable.from(buffer).pipe(upload);
+    Readable.from(decoded).pipe(upload);
   });
   return addCompression(result.secure_url);
 };

@@ -1,7 +1,7 @@
 const multer = require('multer');
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) cb(null, true);
+  if (['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.mimetype)) cb(null, true);
   else cb(new Error('Только изображения разрешены'), false);
 };
 

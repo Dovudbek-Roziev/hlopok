@@ -19,6 +19,8 @@ interface User {
   role: string;
   bonusBalance: number;
   bonusExpiresAt?: string | null;
+  marketingPush?: boolean;
+  blockedUsers?: string[];
   totalSaved: number;
   qrCode: string;
   favorites: string[];
@@ -33,7 +35,7 @@ interface AuthState {
 
   setUser:    (user: User, token: string) => void;
   updateUser: (updates: Partial<User>) => void;
-  logout:     () => Promise<void>;
+  logout:     (revoke?: boolean) => Promise<void>;
   setLoading: (loading: boolean) => void;
 }
 
@@ -62,9 +64,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: updated });
   },
 
-  logout: async () => {
+  logout: async (revoke = true) => {
     const token = get().token;
-    if (token) {
+    if (token && revoke) {
       try {
         const pushToken = await getPushToken();
         await Promise.race([fetch(`${API_URL}/auth/logout`, {

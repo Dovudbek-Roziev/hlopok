@@ -4,6 +4,9 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { adminOnly } = require('../middleware/admin');
 const ctrl = require('../controllers/adminController');
+const reviewCtrl = require('../controllers/reviewController');
+router.get('/reviews', protect, adminOnly, reviewCtrl.getModeration);
+router.put('/reviews/:reviewId', protect, adminOnly, reviewCtrl.moderate);
 const { runSeed } = require('../utils/seed');
 
 const dangerousAdminOnly = (req, res, next) => {

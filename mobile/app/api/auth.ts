@@ -17,5 +17,7 @@ export const authApi = {
   addAddress:     (data: any) => api.post('/auth/addresses', data),
   deleteAddress:  (addressId: string) => api.delete(`/auth/addresses/${addressId}`),
   savePushToken:  (token: string) => api.put('/auth/push-token', { token }),
-  deleteAccount:  () => api.delete('/auth/account'),
+  deleteAccount:  (password: string) => api.delete('/auth/account', { data: { password } }),
+  getBlocks: () => api.get('/auth/blocks'),
+  setBlock: (id: string, blocked: boolean) => api.put(`/auth/blocks/${id}`, { blocked }),
 };

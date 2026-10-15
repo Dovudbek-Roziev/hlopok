@@ -1,3 +1,5 @@
+import { useAuthStore } from '../../store/authStore';
+import { authApi } from '../../api/auth';
 import React, { useState } from 'react';
 import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
 import { Alert, ScrollView, TouchableOpacity, Modal, Share } from 'react-native';
@@ -224,6 +226,8 @@ const OrderDetailScreen = () => {
     setCancelling(true);
     try {
       await ordersApi.cancelOrder(id);
+      authApi.getMe().then(r => useAuthStore.getState().updateUser(r.data.user)).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['bonus-history'] });
       queryClient.invalidateQueries({ queryKey: ['order', id] });
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
     } catch {

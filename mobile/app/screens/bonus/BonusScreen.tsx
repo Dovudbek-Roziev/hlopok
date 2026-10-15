@@ -5,7 +5,7 @@ import ScreenWrapper from '../../components/ScreenWrapper';
 import HlopokLogo from '../../components/HlopokLogo';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ShoppingCart, CreditCard, Gift, Clock, RotateCcw, Info, Star } from 'lucide-react-native';
 import { bonusApi } from '../../api/categories';
@@ -40,10 +40,13 @@ const BonusScreen = () => {
     return () => { active = false; };
   }, [queryClient, updateUser]));
 
-  const { data: txList, isLoading } = useQuery({
-    queryKey: ['bonus-history'],
-    queryFn: () => bonusApi.getMyHistory().then(r => r.data.transactions),
+  const { data: historyPages, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['bonus-history'], initialPageParam: 1,
+    queryFn: ({ pageParam }) => bonusApi.getMyHistory(pageParam).then(r => r.data),
+    getNextPageParam: last => last.pagination.page < last.pagination.pages ? last.pagination.page + 1 : undefined,
+    enabled: !!user,
   });
+  const txList = historyPages?.pages.flatMap(page => page.transactions);
 
   const { data: bonusSettings } = useQuery({
     queryKey: ['bonus-settings'],
@@ -285,6 +288,7 @@ const BonusScreen = () => {
           )}
         </YStack>
 
+      {hasNextPage && <TouchableOpacity disabled={isFetchingNextPage} onPress={() => fetchNextPage()}><Text color={Colors.black}>{t('release.more')}</Text></TouchableOpacity>}
       </ScrollView>
     </YStack>
     </ScreenWrapper>

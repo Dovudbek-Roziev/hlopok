@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('admin_token');
+  const token = sessionStorage.getItem('admin_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   config.headers['Accept-Language'] = localStorage.getItem('admin_lang') || 'ru';
   return config;
@@ -19,8 +19,8 @@ api.interceptors.response.use(
   r => r,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
+      sessionStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_user');
       if (window.location.pathname !== '/login') {
         window.location.replace('/login');
       }

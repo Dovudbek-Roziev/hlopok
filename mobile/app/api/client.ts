@@ -22,9 +22,9 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || (error.response?.status === 403 && error.response?.data?.code === 'ACCOUNT_BLOCKED')) {
       const { useAuthStore } = await import('../store/authStore');
-      await useAuthStore.getState().logout();
+      await useAuthStore.getState().logout(false);
     }
     return Promise.reject(error);
   }

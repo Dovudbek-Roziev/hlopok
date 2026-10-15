@@ -1,5 +1,6 @@
 // Buyurtma modeli / Order model
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const OrderItemSchema = new mongoose.Schema({
   product:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -33,6 +34,7 @@ const OrderSchema = new mongoose.Schema({
     required: true,
   },
   clientRequestId: { type: String, default: undefined },
+  requestHash: { type: String, default: undefined },
 
   // Buyurtma elementlari / Order items
   items: [OrderItemSchema],
@@ -89,7 +91,7 @@ OrderSchema.pre('save', async function (next) {
     const yy = String(date.getFullYear()).slice(2);
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
-    const rand = Math.floor(1000 + Math.random() * 9000);
+    const rand = crypto.randomBytes(6).toString('hex').toUpperCase();
     this.orderNumber = `HLP-${yy}${mm}${dd}-${rand}`;
 
     // Birinchi holat yozuvi / First status entry

@@ -18,7 +18,7 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: msg(req, 'Пользователь не найден', 'Колдонуучу табылган жок') });
     }
     if (!user.isActive) {
-      return res.status(403).json({ success: false, message: msg(req, 'Аккаунт заблокирован', 'Аккаунт бөгөттөлгөн') });
+      return res.status(403).json({ success: false, code: 'ACCOUNT_BLOCKED', message: msg(req, 'Аккаунт заблокирован', 'Аккаунт бөгөттөлгөн') });
     }
     if ((user.tokenVersion || 0) !== (decoded.tokenVersion || 0)) {
       return res.status(401).json({ success: false, message: msg(req, 'Войдите заново', 'Кайра кириңиз') });
@@ -27,7 +27,8 @@ const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: msg(req, 'Недействительный токен', 'Токен жараксыз') });
+    const status = ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name) ? 401 : 503;
+    return res.status(status).json({ success: false, message: msg(req, status === 401 ? 'Недействительный токен' : 'Сервис временно недоступен', status === 401 ? 'Токен жараксыз' : 'Кызмат убактылуу жеткиликсиз') });
   }
 };
 

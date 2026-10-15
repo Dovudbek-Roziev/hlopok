@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
+if (process.env.NODE_ENV === 'production' && (!process.env.MONGODB_URI || !process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) throw new Error('Configure MONGODB_URI and JWT_SECRET (32+ characters)');
 const connectDB = require('./utils/db');
 const initSocket = require('./socket');
 
@@ -68,6 +69,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('./middleware/language'));
 
+app.get('/health', (req, res) => res.json({ status: 'OK' }));
+
 // DB ulanishini har so'rovda tekshirish (serverless uchun)
 app.use(async (req, res, next) => {
   try {
@@ -112,9 +115,10 @@ app.use('/api/store-settings', storeSettingsRoutes);
 app.use('/api/admin',          adminRoutes);
 app.use('/api/faqs',           faqRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+// Readiness check
+app.get('/ready', (req, res) => {
+  const connected = require('mongoose').connection.readyState === 1;
+  res.status(connected ? 200 : 503).json({ status: connected ? 'OK' : 'UNAVAILABLE', timestamp: new Date().toISOString() });
 });
 
 // 404
@@ -127,7 +131,7 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('Server error:', err.message);
   const lang = req.lang || 'ru';
-  res.status(500).json({ success: false, message: lang === 'ky' ? 'Сервер катасы' : 'Ошибка сервера' });
+  res.status(err.name === 'MulterError' || err.statusCode === 400 ? 400 : 500).json({ success: false, message: lang === 'ky' ? 'Сурам аткарылган жок. Маалыматтарды жана файлдарды текшериңиз' : 'Запрос не выполнен. Проверьте данные и файлы' });
 });
 
 // Vercel: app ni export qilamiz, lokal: server.listen

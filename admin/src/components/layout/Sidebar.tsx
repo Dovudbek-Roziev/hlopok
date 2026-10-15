@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAdminStore } from '../../store/adminStore';
 
 const MENU = [
+  { path: '/reviews', icon: HelpCircle, key: 'moderation.title', group: 3 },
   { path: '/',           icon: LayoutDashboard, key: 'sidebar.dashboard',  group: 1 },
   { path: '/orders',     icon: ShoppingCart,    key: 'sidebar.orders',     group: 1 },
   { path: '/products',   icon: Package,         key: 'sidebar.products',   group: 2 },

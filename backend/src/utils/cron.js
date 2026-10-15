@@ -2,6 +2,8 @@
 const cron = require('node-cron');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const MediaCleanup = require('../models/MediaCleanup');
+const { cloudinary } = require('../services/cloudinaryService');
 const { BonusTransaction, BonusSettings } = require('../models/Bonus');
 
 const isExpoToken = token => /^(Exponent|Expo)PushToken\[[A-Za-z0-9_-]+\]$/.test(token || '');
@@ -31,8 +33,10 @@ async function expireAccount(userId, now) {
   }
 }
 
-const initCron = () => {
-  cron.schedule('0 10 * * *', async () => {
+let running = false;
+const runMaintenance = async () => {
+    if (running) return;
+    running = true;
     try {
       const settings = await BonusSettings.findOne();
       const warningDays = settings?.warningDays ?? 7;
@@ -40,6 +44,13 @@ const initCron = () => {
       const now = new Date();
       const warningDate = new Date(now.getTime() + warningDays * 86400000);
 
+      for (const job of await MediaCleanup.find().sort({ createdAt: 1 }).limit(50)) {
+        try {
+          const result = await cloudinary.uploader.destroy(job.publicId);
+          if (result.result === 'ok' || result.result === 'not found') await MediaCleanup.deleteOne({ _id: job._id });
+          else await MediaCleanup.updateOne({ _id: job._id }, { $inc: { attempts: 1 } });
+        } catch { await MediaCleanup.updateOne({ _id: job._id }, { $inc: { attempts: 1 } }); }
+      }
       const legacyUsers = await User.find({ bonusExpiresAt: { $exists: false } })
         .select('_id createdAt').limit(500);
       for (const user of legacyUsers) {
@@ -84,9 +95,10 @@ const initCron = () => {
         bonusBalance: { $gt: 0 },
         bonusExpiresAt: { $gte: now, $lte: warningDate },
         bonusExpiryWarningSentAt: { $exists: false },
-      }).select('_id language bonusBalance pushToken pushTokens').cursor()) {
+      }).select('_id language bonusBalance bonusExpiresAt pushToken pushTokens').cursor()) {
         const tokens = [...new Set([...(user.pushTokens || []), user.pushToken].filter(isExpoToken))];
         const isKy = user.language === 'ky';
+        const daysLeft = Math.max(1, Math.ceil((user.bonusExpiresAt - now) / 86400000));
         for (const token of tokens) {
           batch.push({
             userId: user._id.toString(),
@@ -94,8 +106,8 @@ const initCron = () => {
               to: token,
               title: isKy ? 'Бонустардын мөөнөтү бүтөт' : 'Срок бонусов скоро истечёт',
               body: isKy
-                ? `${user.bonusBalance} бонус ${warningDays} күн ичинде өчөт. Колдонуп калыңыз!`
-                : `${user.bonusBalance} бонусов сгорит через ${warningDays} дней. Используйте сейчас!`,
+                ? `${user.bonusBalance} бонус ${daysLeft} күн ичинде өчөт. Колдонуп калыңыз!`
+                : `${user.bonusBalance} бонусов сгорит через ${daysLeft} дней. Используйте сейчас!`,
               data: { screen: 'BonusCard' },
               sound: 'default',
               channelId: 'orders',
@@ -125,8 +137,11 @@ const initCron = () => {
       }
     } catch (error) {
       console.error('Cron job error:', error);
-    }
-  });
+    } finally { running = false; }
 };
-
+const initCron = () => {
+  void runMaintenance();
+  cron.schedule('*/15 * * * *', runMaintenance, { timezone: 'Asia/Bishkek' });
+};
 module.exports = initCron;
+module.exports.runMaintenance = runMaintenance;

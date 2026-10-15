@@ -1,6 +1,6 @@
 import React from 'react';
 import { useHeaderTopPadding } from '../../utils/useHeaderTopPadding';
-import { ScrollView, TouchableOpacity } from 'react-native';
+import { ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { YStack, XStack, Text } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useTranslation } from 'react-i18next';
@@ -78,6 +78,7 @@ const GuestView = () => {
           </TouchableOpacity>
         ))}
       </XStack>
+      <TouchableOpacity onPress={() => Linking.openURL('https://hlopok-admin.vercel.app/privacy')}><Text color={Colors.black}>{t('release.privacy')}</Text></TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('AuthNavigator')}
         style={{
           backgroundColor: Colors.yellow, borderRadius: 14,
@@ -112,30 +113,13 @@ const ProfileScreen = () => {
     });
   };
 
-  const handleDeleteAccount = () => {
-    useConfirmStore.getState().ask({
-      title: t('profile.deleteAccount'),
-      message: t('profile.deleteAccountConfirm'),
-      confirmLabel: t('common.delete'),
-      cancelLabel: t('common.cancel'),
-      destructive: true,
-      onConfirm: async () => {
-        try {
-          await authApi.deleteAccount();
-          await logout();
-        } catch (err: any) {
-          toast.error(err.response?.data?.message || t('common.error'));
-        }
-      },
-    });
-  };
-
   const LangToggle = () => (
     <XStack gap={6}>
       {(['ru', 'ky'] as const).map(l => (
         <TouchableOpacity key={l}
           onPress={async () => {
             await i18n.changeLanguage(l);
+            useAuthStore.getState().updateUser({ language: l });
             authApi.updateProfile({ language: l }).catch(() => {});
           }}
           style={{
@@ -249,6 +233,8 @@ const ProfileScreen = () => {
         <MenuItem icon={Globe} label={t('profile.language')}
           onPress={() => {}} right={<LangToggle />} />
         <Divider />
+        <MenuItem icon={HelpCircle} label={t('release.accountSettings')} onPress={() => navigation.navigate('AccountSettings')} />
+        <Divider />
         <MenuItem icon={Lock} label={t('profile.changePassword')}
           onPress={() => navigation.navigate('ChangePassword')} />
       </YStack>
@@ -260,7 +246,7 @@ const ProfileScreen = () => {
           onPress={handleLogout} danger right={null} />
         <Divider />
         <MenuItem icon={Trash2} label={t('profile.deleteAccount')}
-          onPress={handleDeleteAccount} danger right={null} />
+          onPress={() => navigation.navigate('AccountSettings')} danger right={null} />
       </YStack>
 
       <Text color={Colors.grayLight} fontSize={11} textAlign="center" marginVertical={20}>

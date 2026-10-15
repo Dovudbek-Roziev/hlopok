@@ -4,6 +4,9 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { adminOnly } = require('../middleware/admin');
 const ctrl = require('../controllers/authController');
+const { requestBudget } = require('../middleware/requestBudget');
+router.use(['/send-otp', '/send-reset-otp'], requestBudget('otp-send', 20, 15 * 60000));
+router.use(['/login', '/register', '/verify-otp', '/reset-password'], requestBudget('auth', 60, 15 * 60000));
 
 router.post('/send-otp',                ctrl.sendOTP);
 router.post('/verify-otp',              ctrl.verifyOTP);
@@ -25,6 +28,9 @@ router.post('/addresses',                   protect, ctrl.addAddress);
 router.delete('/addresses/:addressId',      protect, ctrl.deleteAddress);
 router.put('/push-token',                   protect, ctrl.savePushToken);
 router.post('/logout',                      protect, ctrl.logout);
+const reviewCtrl = require('../controllers/reviewController');
+router.get('/blocks', protect, (req, res, next) => reviewCtrl.getBlocks(req, res).catch(next));
+router.put('/blocks/:userId', protect, reviewCtrl.setBlock);
 router.delete('/account',                   protect, ctrl.deleteAccount);
 
 module.exports = router;

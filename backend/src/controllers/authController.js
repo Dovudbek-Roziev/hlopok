@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { v4: uuidv4 } = require('uuid');
+const uuidv4 = crypto.randomUUID;
 const QRCode = require('qrcode');
 const User = require('../models/User');
 const OTP  = require('../models/OTP');
@@ -12,20 +12,17 @@ const { BonusTransaction, BonusSettings } = require('../models/Bonus');
 const { deleteImage, getPublicId } = require('../services/cloudinaryService');
 const { sendSMS } = require('../utils/sms');
 const msg = require('../utils/msg');
+const mongoose = require('mongoose');
+const MediaCleanup = require('../models/MediaCleanup');
+const { claimOtpSend } = require('../middleware/requestBudget');
 const MAX_OTP_ATTEMPTS = 5;
 
 const normalizePhone = value => typeof value === 'string' ? value.replace(/\D/g, '') : '';
 const hashVerificationToken = value => crypto.createHash('sha256').update(value).digest('hex');
-const otpDeliveryErrorMessage = (req, error) => error.code === 'NIKITA_STATUS_5'
-  ? msg(req,
-    'Код не отправлен: Nikita не подтвердила имя отправителя. Попросите подтвердить Hlopok.Kg и проверьте настройку NIKITA_SENDER.',
-    'Код жөнөтүлгөн жок: Nikita жөнөтүүчүнүн атын ырастаган эмес. Hlopok.Kg атын ырастатып, NIKITA_SENDER жөндөөсүн текшериңиз.')
-  : msg(req,
-    'Не удалось отправить код. Попробуйте позже.',
-    'Код жөнөтүлгөн жок. Кийинчерээк кайра аракет кылыңыз.');
+const otpDeliveryErrorMessage = req => msg(req, 'Не удалось отправить код. Попробуйте позже или обратитесь в магазин', 'Код жөнөтүлгөн жок. Кийинчерээк аракет кылыңыз же дүкөнгө кайрылыңыз');
 
-const generateToken = (userId, tokenVersion = 0) =>
-  jwt.sign({ id: userId, tokenVersion }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+const generateToken = (userId, tokenVersion = 0, role = 'user') =>
+  jwt.sign({ id: userId, tokenVersion }, process.env.JWT_SECRET, { expiresIn: role === 'admin' ? '1h' : (process.env.JWT_EXPIRE || '30d') });
 
 const userPayload = (user) => {
   const bonusExpiresAt = user.bonusExpiresAt || (user.createdAt
@@ -41,6 +38,8 @@ const userPayload = (user) => {
   birthDate: user.birthDate,
   language: user.language,
   role: user.role,
+   marketingPush: !!user.marketingPush,
+   blockedUsers: (user.blockedUsers || []).map(String),
   bonusBalance: bonusExpiresAt && bonusExpiresAt <= new Date() ? 0 : user.bonusBalance,
   bonusExpiresAt,
   totalSaved: user.totalSaved,
@@ -64,7 +63,7 @@ exports.register = async (req, res) => {
     if (typeof password !== 'string' || password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
       return res.status(400).json({ success: false, message: msg(req, 'Пароль должен содержать от 8 до 72 байт', 'Сырсөз 8ден 72 байтка чейин болушу керек') });
     }
-    if (typeof firstName !== 'string' || !firstName.trim() || typeof lastName !== 'string' || !lastName.trim() || !['male', 'female'].includes(gender)) {
+    if (typeof firstName !== 'string' || !firstName.trim() || firstName.length > 100 || typeof lastName !== 'string' || !lastName.trim() || lastName.length > 100 || !['male', 'female'].includes(gender)) {
       return res.status(400).json({ success: false, message: msg(req, 'Заполните обязательные поля', 'Милдеттүү талааларды толтуруңуз') });
     }
     if (typeof verificationToken !== 'string' || !/^[a-f0-9]{64}$/i.test(verificationToken)) {
@@ -78,51 +77,34 @@ exports.register = async (req, res) => {
     }
 
     const tokenHash = hashVerificationToken(verificationToken);
-    const verifiedOtp = await OTP.findOne({
-      phone: cleanPhone,
-      purpose: 'registration',
-      used: true,
-      verificationTokenHash: tokenHash,
-      expiresAt: { $gt: new Date() },
-    });
-    if (!verifiedOtp) {
-      return res.status(400).json({ success: false, message: msg(req, 'Сначала подтвердите номер телефона', 'Алгач телефон номерин ырастаңыз') });
-    }
-
     const qrData = `hlopok:bonus:${uuidv4()}`;
     const qrCode = await QRCode.toDataURL(qrData);
-    const consumedOtp = await OTP.findOneAndUpdate(
-      { _id: verifiedOtp._id, used: true, verificationTokenHash: tokenHash, expiresAt: { $gt: new Date() } },
-      { $unset: { verificationTokenHash: 1 } },
-      { new: true }
-    );
-    if (!consumedOtp) {
-      return res.status(400).json({ success: false, message: msg(req, 'Код уже использован или устарел', 'Код мурда колдонулган же мөөнөтү бүткөн') });
-    }
-
-    const bonusSettings = await BonusSettings.findOne() || { expiryDays: 90 };
-    const bonusExpiresAt = new Date(Date.now() + bonusSettings.expiryDays * 24 * 60 * 60 * 1000);
-    const user = await User.create({
-      phone: cleanPhone,
-      email: autoEmail,
-      password,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      gender,
-      language: language === 'ky' ? 'ky' : 'ru',
-      qrCode,
-      qrData,
-      bonusExpiresAt,
-    });
-    await OTP.deleteMany({ phone: cleanPhone, purpose: 'registration' });
-    const token = generateToken(user._id, user.tokenVersion || 0);
+    let user, bonusSettings;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const verifiedOtp = await OTP.findOneAndUpdate({
+          phone: cleanPhone, purpose: 'registration', used: true,
+          verificationTokenHash: tokenHash, expiresAt: { $gt: new Date() },
+        }, { $unset: { verificationTokenHash: 1 } }, { new: true, session });
+        if (!verifiedOtp) throw Object.assign(new Error('Phone verification required'), { statusCode: 400 });
+        bonusSettings = await BonusSettings.findOne().session(session) || { expiryDays: 90 };
+        [user] = await User.create([{
+          phone: cleanPhone, email: autoEmail, password, firstName: firstName.trim(),
+          lastName: lastName.trim(), gender, language: language === 'ky' ? 'ky' : 'ru',
+          qrCode, qrData, bonusExpiresAt: new Date(Date.now() + bonusSettings.expiryDays * 86400000),
+        }], { session });
+        await OTP.deleteMany({ phone: cleanPhone, purpose: 'registration' }, { session });
+      });
+    } finally { await session.endSession(); }
+    const token = generateToken(user._id, user.tokenVersion || 0, user.role);
     return res.status(201).json({
       success: true, token, user: userPayload(user),
       bonusProgram: { percent: bonusSettings.bonusPercent ?? 5, days: bonusSettings.expiryDays ?? 90 },
     });
   } catch (error) {
     console.error('register error:', error.name, error.code);
-    return res.status(500).json({ success: false, message: msg(req, 'Не удалось создать аккаунт', 'Аккаунт түзүлгөн жок') });
+    return res.status(error.statusCode || (error.code === 11000 ? 409 : 500)).json({ success: false, message: msg(req, 'Не удалось создать аккаунт. Проверьте подтверждение номера', 'Аккаунт түзүлгөн жок. Номердин ырасталышын текшериңиз') });
   }
 };
 exports.login = async (req, res) => {
@@ -133,14 +115,15 @@ exports.login = async (req, res) => {
   }[lang] || { wrong: 'Неверный email или пароль', blocked: 'Аккаунт заблокирован', error: 'Ошибка входа' };
 
   try {
-    const { phone, email, password } = req.body;
+    const { phone, email, password } = req.body || {};
+    if (typeof password !== 'string' || (phone != null && typeof phone !== 'string') || (!phone && typeof email !== 'string')) return res.status(400).json({ success: false, message: m.wrong });
 
     let user;
     if (phone) {
       const cleanPhone = phone.replace(/\D/g, '');
       user = await User.findOne({ phone: cleanPhone }).select('+password');
     } else {
-      user = await User.findOne({ email }).select('+password');
+      user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
     }
 
     if (!user) return res.status(401).json({ success: false, message: m.wrong });
@@ -149,7 +132,7 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ success: false, message: m.wrong });
 
-    const token = generateToken(user._id, user.tokenVersion || 0);
+    const token = generateToken(user._id, user.tokenVersion || 0, user.role);
     res.json({ success: true, token, user: userPayload(user) });
   } catch (error) {
     console.error('login error:', error);
@@ -177,7 +160,7 @@ exports.resetPasswordByPhone = async (req, res) => {
     user.pushToken = '';
     user.pushTokens = [];
     await user.save();
-    const token = generateToken(user._id, user.tokenVersion);
+    const token = generateToken(user._id, user.tokenVersion, user.role);
     return res.json({ success: true, token, user: userPayload(user) });
     res.json({ success: true, message: msg(req, 'Пароль успешно изменён', 'Сырсөз ийгиликтүү өзгөртүлдү') });
   } catch (error) {
@@ -218,8 +201,10 @@ exports.getFavorites = async (req, res) => {
 // тФАтФАтФА Profilni yangilash / Update profile тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 exports.updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, language, gender, birthDate } = req.body;
+    const { firstName, lastName, language, gender, birthDate, marketingPush } = req.body;
+    if ((firstName !== undefined && (typeof firstName !== 'string' || !firstName.trim() || firstName.length > 100)) || (lastName !== undefined && (typeof lastName !== 'string' || !lastName.trim() || lastName.length > 100)) || (marketingPush !== undefined && typeof marketingPush !== 'boolean')) return res.status(400).json({ success: false, message: msg(req, 'Проверьте данные профиля', 'Профилдин маалыматын текшериңиз') });
     const updates = {};
+    if (marketingPush !== undefined) updates.marketingPush = marketingPush;
     if (firstName !== undefined) updates.firstName = firstName.trim();
     if (lastName  !== undefined) updates.lastName  = lastName.trim();
     if (language  !== undefined) updates.language  = language;
@@ -254,7 +239,7 @@ exports.changePassword = async (req, res) => {
       ? [pushToken]
       : [];
     await user.save();
-    const token = generateToken(user._id, user.tokenVersion);
+    const token = generateToken(user._id, user.tokenVersion, user.role);
     res.json({ success: true, token, user: userPayload(user), message: msg(req, 'Пароль изменён', 'Сырсөз өзгөртүлдү') });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка смены пароля', 'Сырсөздү өзгөртүүдө ката') });
@@ -389,83 +374,44 @@ exports.savePushToken = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    const { pushToken } = req.body || {};
-    if (typeof pushToken === 'string' && /^(Exponent|Expo)PushToken\[[A-Za-z0-9_-]+\]$/.test(pushToken)) {
-      await User.updateOne({ _id: req.user._id }, { $pull: { pushTokens: pushToken } });
-      await User.updateOne({ _id: req.user._id, pushToken }, { $set: { pushToken: '' } });
-    }
+    await User.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 }, $set: { pushToken: '', pushTokens: [] } });
     res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false });
-  }
+  } catch { res.status(503).json({ success: false }); }
 };
 
 exports.deleteAccount = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
-    const user = await User.findById(req.user._id).select('phone avatar');
-    if (!user) return res.status(404).json({ success: false });
-
-    const openOrder = await Order.exists({
-      user: req.user._id,
-      status: { $in: ['pending', 'confirmed', 'preparing'] },
-    });
-    if (openOrder) {
-      return res.status(400).json({
-        success: false,
-        message: msg(req, 'Нельзя удалить аккаунт, пока есть активный заказ', 'Активдүү буйрутма бар кезде аккаунтту өчүрүүгө болбойт'),
-      });
+    if (req.user.role === 'admin') return res.status(403).json({ success: false });
+    const candidate = await User.findById(req.user._id).select('+password');
+    if (!candidate || typeof req.body?.password !== 'string' || !await candidate.comparePassword(req.body.password)) {
+      return res.status(400).json({ success: false, message: msg(req, 'Введите текущий пароль', 'Учурдагы сырсөздү киргизиңиз') });
     }
-
-    const suffix = req.user._id.toString();
-    const avatarPublicId = getPublicId(user.avatar);
-    await Promise.all([
-      OTP.deleteMany({ phone: user.phone }),
-      Review.deleteMany({ user: req.user._id }),
-      Order.updateMany(
-        { user: req.user._id },
-        { $set: { contactName: 'Deleted User', contactPhone: '', deliveryAddress: '', note: '' }, $unset: { finikPaymentUrl: 1 } }
-      ),
-      BonusTransaction.updateMany(
-        { user: req.user._id },
-        { $set: { description_ru: 'Удалённый аккаунт', description_ky: 'Өчүрүлгөн аккаунт' } }
-      ),
-    ]);
-
-    if (avatarPublicId?.startsWith('hlopok/avatars/')) {
-      await deleteImage(avatarPublicId);
-    }
-
-    await User.findByIdAndUpdate(req.user._id, {
-      $set: {
-        phone: '',
-        email: `deleted-${suffix}@deleted.hlopok.local`,
-        firstName: 'Deleted',
-        lastName: 'User',
-        birthDate: null,
-        avatar: '',
-        pushToken: '',
-        pushTokens: [],
-        favorites: [],
-        addresses: [],
-        qrCode: '',
-        qrData: '',
-        bonusBalance: 0,
-        totalSaved: 0,
-        isActive: false,
-      },
-      $unset: {
-        gender: 1,
-        bonusExpiresAt: 1,
-        bonusExpiryWarningSentAt: 1,
-        bonusExpiryProcessedAt: 1,
-      },
-      $inc: { tokenVersion: 1 },
+    await session.withTransaction(async () => {
+      const user = await User.findOneAndUpdate({ _id: req.user._id, isActive: true, $or: [{ tokenVersion: candidate.tokenVersion || 0 }, ...(candidate.tokenVersion ? [] : [{ tokenVersion: { $exists: false } }])] }, { $inc: { checkoutVersion: 1 } }, { new: true, session });
+      if (!user) throw Object.assign(new Error('Account changed'), { statusCode: 409 });
+      if (await Order.exists({ user: user._id, status: { $in: ['pending', 'confirmed', 'preparing'] } }).session(session)) {
+        throw Object.assign(new Error('Active order'), { statusCode: 409 });
+      }
+      await OTP.deleteMany({ phone: user.phone }, { session });
+      await Review.deleteMany({ user: user._id }, { session });
+      const ReviewReport = require('../models/ReviewReport');
+      await ReviewReport.deleteMany({ $or: [{ reporter: user._id }, { author: user._id }] }, { session });
+      await User.updateMany({ blockedUsers: user._id }, { $pull: { blockedUsers: user._id } }, { session });
+      await Order.updateMany({ user: user._id }, { $set: { contactName: 'Deleted User', contactPhone: '', deliveryAddress: '', note: '', cancelReason: '', 'statusHistory.$[].comment': '' }, $unset: { finikPaymentUrl: 1, finikPaymentId: 1 } }, { session });
+      await BonusTransaction.updateMany({ user: user._id }, { $set: { description_ru: 'Удалённый аккаунт', description_ky: 'Өчүрүлгөн аккаунт' } }, { session });
+      const publicId = getPublicId(user.avatar);
+      if (publicId?.startsWith('hlopok/avatars/')) await MediaCleanup.updateOne({ publicId }, { $setOnInsert: { publicId } }, { upsert: true, session });
+      await User.updateOne({ _id: user._id }, {
+        $set: { email: `deleted-${user._id}@deleted.hlopok.local`, firstName: 'Deleted', lastName: 'User', avatar: '', pushToken: '', pushTokens: [], favorites: [], addresses: [], blockedUsers: [], marketingPush: false, qrCode: '', qrData: '', bonusBalance: 0, totalSaved: 0, isActive: false },
+        $unset: { phone: 1, password: 1, gender: 1, birthDate: 1, bonusExpiresAt: 1, bonusExpiryWarningSentAt: 1, bonusExpiryProcessedAt: 1 },
+        $inc: { tokenVersion: 1 },
+      }, { session });
     });
-
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, message: msg(req, 'Ошибка удаления аккаунта', 'Аккаунтту өчүрүүдө ката') });
-  }
+    res.status(error.statusCode || 500).json({ success: false, message: msg(req, 'Удаление не выполнено. Проверьте активные заказы или обратитесь в поддержку', 'Өчүрүлгөн жок. Активдүү буйрутмаларды текшериңиз же колдоого кайрылыңыз') });
+  } finally { await session.endSession(); }
 };
 
 // тФАтФАтФА OTP yuborish / Send OTP тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
@@ -488,6 +434,7 @@ exports.sendOTP = async (req, res) => {
       return res.status(429).json({ success: false, message: msg(req, 'Повторите запрос через минуту', 'Бир мүнөттөн кийин кайталаңыз') });
     }
 
+    await claimOtpSend(cleanPhone, 'registration');
     await OTP.deleteMany({ phone: cleanPhone, purpose: 'registration' });
     const code = crypto.randomInt(100000, 1000000).toString();
     const otp = await OTP.create({
@@ -511,7 +458,7 @@ exports.sendOTP = async (req, res) => {
     return res.json({ success: true, message: msg(req, 'Запрос на отправку кода принят', 'Код жөнөтүү өтүнүчү кабыл алынды') });
   } catch (error) {
     console.error('sendOTP error:', error.name, error.code);
-    return res.status(500).json({ success: false, message: msg(req, 'Не удалось отправить код', 'Код жөнөтүлгөн жок') });
+    return res.status(error.statusCode || 500).json({ success: false, message: msg(req, 'Не удалось отправить код. Повторите позже', 'Код жөнөтүлгөн жок. Кийинчерээк кайталаңыз') });
   }
 };
 
@@ -536,6 +483,7 @@ exports.sendResetOTP = async (req, res) => {
       return res.json({ success: true, message: msg(req, 'Если номер зарегистрирован, код будет отправлен', 'Номер катталган болсо, код жөнөтүлөт') });
     }
 
+    await claimOtpSend(cleanPhone, 'password_reset');
     await OTP.deleteMany({ phone: cleanPhone, purpose: 'password_reset' });
     const code = crypto.randomInt(100000, 1000000).toString();
     const otp = await OTP.create({
@@ -559,7 +507,7 @@ exports.sendResetOTP = async (req, res) => {
     return res.json({ success: true, message: msg(req, 'Если номер зарегистрирован, код будет отправлен', 'Номер катталган болсо, код жөнөтүлөт') });
   } catch (error) {
     console.error('sendResetOTP error:', error.name, error.code);
-    return res.status(500).json({ success: false, message: msg(req, 'Не удалось отправить код', 'Код жөнөтүлгөн жок') });
+    return res.status(error.statusCode || 500).json({ success: false, message: msg(req, 'Не удалось отправить код. Повторите позже', 'Код жөнөтүлгөн жок. Кийинчерээк кайталаңыз') });
   }
 };
 

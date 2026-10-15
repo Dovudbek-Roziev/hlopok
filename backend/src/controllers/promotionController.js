@@ -28,9 +28,10 @@ function parsePromotionFields(body, existing = {}) {
   });
 
   const startDate = body.startDate !== undefined ? new Date(body.startDate) : new Date(existing.startDate);
+  if (typeof body.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.startDate)) startDate.setTime(startDate.getTime() - 6 * 3600000);
   const endDate = body.endDate !== undefined ? new Date(body.endDate) : new Date(existing.endDate);
   if (typeof body.endDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) {
-    endDate.setUTCHours(23, 59, 59, 999);
+    endDate.setUTCHours(17, 59, 59, 999); // End of calendar day in Asia/Bishkek (UTC+6).
   }
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
     throw new Error('INVALID_DATES');
@@ -119,6 +120,8 @@ exports.createPromotion = async (req, res) => {
 exports.updatePromotion = async (req, res) => {
   try {
     const { title_ru, title_ky, description_ru, description_ky, startDate, endDate, isActive, discountPercent, products } = req.body;
+    const expectedUpdatedAt = new Date(req.body.expectedUpdatedAt);
+    if (!Number.isFinite(expectedUpdatedAt.getTime())) return res.status(409).json({ success: false, message: msg(req, 'Обновите акцию и повторите', 'Акцияны жаңылап, кайталаңыз') });
     const current = await Promotion.findById(req.params.id);
     if (!current) return res.status(404).json({ success: false, message: msg(req, 'РђРєС†РёСЏ РЅРµ РЅР°Р№РґРµРЅР°', 'РђРєС†РёСЏ С‚Р°Р±С‹Р»РіР°РЅ Р¶РѕРє') });
     const parsed = parsePromotionFields({ startDate, endDate, discountPercent, products }, current);
@@ -129,8 +132,8 @@ exports.updatePromotion = async (req, res) => {
     if (description_ky !== undefined) updates.description_ky = description_ky;
     if (isActive !== undefined) updates.isActive = isActive === 'true' || isActive === true;
     if (req.file) updates.image = await uploadToCloudinary(req.file.buffer, req.file.mimetype, 'hlopok/promotions');
-    const promotion = await Promotion.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
-    if (!promotion) return res.status(404).json({ success: false, message: msg(req, 'Акция не найдена', 'Акция табылган жок') });
+    const promotion = await Promotion.findOneAndUpdate({ _id: req.params.id, updatedAt: expectedUpdatedAt }, { $set: updates, $inc: { __v: 1 } }, { new: true, runValidators: true });
+    if (!promotion) return res.status(409).json({ success: false, message: msg(req, 'Акция изменилась. Откройте форму заново', 'Акция өзгөрдү. Форманы кайра ачыңыз') });
     res.json({ success: true, promotion });
   } catch (error) {
     if (['INVALID_DISCOUNT', 'INVALID_DATES', 'INVALID_PRODUCTS'].includes(error.message) || error instanceof SyntaxError) return invalidPromotionResponse(res, error.message === 'INVALID_DISCOUNT' || error.message === 'INVALID_DATES' ? error : new Error('INVALID_PRODUCTS'), req);
@@ -141,7 +144,7 @@ exports.updatePromotion = async (req, res) => {
 
 exports.deletePromotion = async (req, res) => {
   try {
-    const deleted = await Promotion.findByIdAndDelete(req.params.id);
+    const deleted = await Promotion.findByIdAndUpdate(req.params.id, { $set: { isActive: false }, $inc: { __v: 1 } }, { new: true });
     if (!deleted) return res.status(404).json({ success: false, message: msg(req, 'Акция не найдена', 'Акция табылган жок') });
     res.json({ success: true, message: msg(req, 'Акция удалена', 'Акция жок кылынды') });
   } catch (error) {

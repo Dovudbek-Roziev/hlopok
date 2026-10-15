@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { ordersApi } from '../api/orders';
+import ReviewRules from './ReviewRules';
 import { productsApi } from '../api/products';
 import { useColors } from '../theme/useColors';
 import { getSizeLabel } from '../utils/sizeLabel';
@@ -47,6 +48,7 @@ const RatingModal = () => {
   const qc = useQueryClient();
 
   const [index, setIndex]     = useState(0);
+  const [acceptRules, setAcceptRules] = useState(false);
   const [rating, setRating]   = useState(0);
   const [comment, setComment] = useState('');
   const [done, setDone]       = useState(false);
@@ -74,7 +76,7 @@ const RatingModal = () => {
 
   const mutation = useMutation({
     mutationFn: () =>
-      productsApi.createReview(current.productId, { rating, comment }),
+      productsApi.createReview(current.productId, { rating, comment, acceptRules }),
     onError: (err: any) => {
       const msg = err?.response?.data?.message || t('common.error');
       Alert.alert(t('common.error'), msg);
@@ -87,6 +89,7 @@ const RatingModal = () => {
         Animated.timing(slideAnim, { toValue: -500, duration: 200, useNativeDriver: true }).start(() => {
           setIndex(i => i + 1);
           setRating(0);
+          setAcceptRules(false);
           setComment('');
           slideAnim.setValue(400);
           Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 68, friction: 11 }).start();
@@ -98,6 +101,7 @@ const RatingModal = () => {
           setDone(false);
           setIndex(0);
           setRating(0);
+          setAcceptRules(false);
           setComment('');
           refetch();
         }, 2000);
@@ -108,7 +112,7 @@ const RatingModal = () => {
   if (!isAuthenticated || pending.length === 0) return null;
 
   return (
-    <Modal visible={visible || done} transparent animationType="none" statusBarTranslucent>
+    <Modal onRequestClose={() => setSkipped(true)} visible={visible || done} transparent animationType="none" statusBarTranslucent>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -229,10 +233,11 @@ const RatingModal = () => {
                   placeholderTextColor={Colors.gray}
                 />
 
+                <ReviewRules value={acceptRules} onChange={setAcceptRules} />
                 {/* Send button */}
                 <TouchableOpacity
                   onPress={() => mutation.mutate()}
-                  disabled={rating === 0 || mutation.isPending}
+                  disabled={!acceptRules || rating === 0 || mutation.isPending}
                   style={{
                     backgroundColor: rating > 0 ? Colors.green : Colors.grayLight,
                     borderRadius: 16,
@@ -252,6 +257,7 @@ const RatingModal = () => {
                     if (index + 1 < pending.length) {
                       setIndex(i => i + 1);
                       setRating(0);
+          setAcceptRules(false);
                       setComment('');
                     } else {
                       setSkipped(true);

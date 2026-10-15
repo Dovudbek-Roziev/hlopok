@@ -5,7 +5,7 @@ import { YStack, XStack, Text, Spinner, Image } from 'tamagui';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Package, ChevronRight, SlidersHorizontal } from 'lucide-react-native';
 import { ordersApi } from '../../api/orders';
 import { useColors } from '../../theme/useColors';
@@ -31,11 +31,13 @@ const OrdersScreen = () => {
   const [filterOpen, setFilterOpen]     = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['my-orders'],
-    queryFn: () => ordersApi.getMyOrders().then(r => r.data.orders),
+  const { data: pages, isLoading, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['my-orders'], initialPageParam: 1,
+    queryFn: ({ pageParam }) => ordersApi.getMyOrders(pageParam).then(r => r.data),
+    getNextPageParam: last => last.pagination.page < last.pagination.pages ? last.pagination.page + 1 : undefined,
     enabled: isAuthenticated,
   });
+  const data = pages?.pages.flatMap(page => page.orders);
 
   if (!isAuthenticated) {
     return (
@@ -157,6 +159,7 @@ const OrdersScreen = () => {
 
       <FlatList
         data={orders}
+        ListFooterComponent={hasNextPage ? <TouchableOpacity disabled={isFetchingNextPage} onPress={() => fetchNextPage()} style={{ padding: 20 }}><Text color={Colors.black}>{t("release.more")}</Text></TouchableOpacity> : null}
         keyExtractor={i => i._id}
         contentContainerStyle={{ padding: 12, gap: 10 }}
         onRefresh={refetch}

@@ -10,10 +10,11 @@ export const productsApi = {
   getProduct:   (id: string) => api.get(`/products/${id}`),
 
   // Reviews
-  getReviews:   (id: string) => api.get(`/products/${id}/reviews`),
+  getReviews:   (id: string, page = 1) => api.get(`/products/${id}/reviews`, { params: { page } }),
   canReview:    (id: string) => api.get(`/products/${id}/reviews/can`),
-  createReview: (id: string, data: { rating: number; comment: string }) =>
+  createReview: (id: string, data: { rating: number; comment: string; acceptRules: boolean }) =>
     api.post(`/products/${id}/reviews`, data),
+  reportReview: (productId: string, reviewId: string) => api.post(`/products/${productId}/reviews/${reviewId}/report`, {}),
   deleteReview: (productId: string, reviewId: string) =>
     api.delete(`/products/${productId}/reviews/${reviewId}`),
 };

@@ -131,8 +131,8 @@ const PromoForm = ({ promo, onClose, onSaved }: any) => {
     description_ru: promo?.description_ru || '',
     description_ky: promo?.description_ky || '',
     discountPercent: promo?.discountPercent || '',
-    startDate: promo?.startDate ? promo.startDate.slice(0, 10) : '',
-    endDate:   promo?.endDate   ? promo.endDate.slice(0, 10)   : '',
+    startDate: promo?.startDate ? new Date(new Date(promo.startDate).getTime() + 6 * 3600000).toISOString().slice(0, 10) : '',
+    endDate:   promo?.endDate   ? new Date(new Date(promo.endDate).getTime() + 6 * 3600000).toISOString().slice(0, 10)   : '',
     isActive:  promo?.isActive !== false,
   });
 
@@ -194,6 +194,7 @@ const PromoForm = ({ promo, onClose, onSaved }: any) => {
     setLoading(true);
     try {
       const fd = new FormData();
+      if (promo) fd.append('expectedUpdatedAt', promo.updatedAt);
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
       const productsPayload = Object.entries(selectedProducts).map(([product, limit]) => ({
         product, limit: limit === '' ? null : Number(limit),

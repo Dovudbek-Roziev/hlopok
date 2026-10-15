@@ -7,10 +7,13 @@ const msg = require('../utils/msg');
 // ─── Bonus tarixi / Bonus history ────────────────────────────────
 exports.getMyBonusHistory = async (req, res) => {
   try {
-    const transactions = await BonusTransaction.find({ user: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(50);
-    res.json({ success: true, transactions });
+    const page = Math.max(1, Math.min(100000, Math.floor(Number(req.query.page)) || 1));
+    const limit = 30;
+    const [transactions, total] = await Promise.all([
+      BonusTransaction.find({ user: req.user._id }).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit),
+      BonusTransaction.countDocuments({ user: req.user._id }),
+    ]);
+    res.json({ success: true, transactions, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });
   }
@@ -82,7 +85,7 @@ exports.addBonusManual = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: msg(req, 'Пользователь не найден', 'Колдонуучу табылган жок') });
 
     const parsedAmount = Number(amount);
-    if (!parsedAmount || parsedAmount <= 0 || isNaN(parsedAmount)) {
+    if (!Number.isSafeInteger(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ success: false, message: msg(req, 'Неверная сумма', 'Сумма туура эмес') });
     }
 
@@ -92,17 +95,19 @@ exports.addBonusManual = async (req, res) => {
       return res.status(400).json({ success: false, message: msg(req, 'Срок бонусного периода истёк', 'Бонус мөөнөтү бүттү') });
     }
 
-    user.bonusBalance += parsedAmount;
-    await user.save();
-
-    await BonusTransaction.create({
-      user: user._id,
-      type: 'admin_add',
-      amount: parsedAmount,
-      expiresAt,
-      description_ru: description_ru || note || 'Бонус добавлен администратором',
-      description_ky: description_ky || note || 'Бонус администратор тарабынан кошулду',
-    });
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const current = await User.findOneAndUpdate({ _id: user._id, isActive: true, bonusExpiryProcessedAt: { $exists: false }, $or: [{ bonusExpiresAt: { $gt: new Date() } }, { bonusExpiresAt: { $exists: false } }] }, { $inc: { bonusBalance: parsedAmount, checkoutVersion: 1 } }, { new: true, session });
+        if (!current) throw new Error('Account changed');
+        await BonusTransaction.create([{
+          user: user._id, type: 'admin_add', amount: parsedAmount, expiresAt,
+          description_ru: description_ru || note || 'Бонус добавлен администратором',
+          description_ky: description_ky || note || 'Бонус администратор тарабынан кошулду',
+        }], { session });
+        user = current;
+      });
+    } finally { await session.endSession(); }
 
     res.json({ success: true, message: msg(req, 'Бонус добавлен', 'Бонус кошулду'), user: { email: user.email, bonusBalance: user.bonusBalance } });
   } catch (error) {
@@ -170,8 +175,8 @@ exports.extendExpiry = async (req, res) => {
 exports.getAllTransactions = async (req, res) => {
   try {
     const { page = 1, limit = 30 } = req.query;
-    const safeLimit = Math.min(Number(limit) || 30, 500);
-    const skip = (Number(page) - 1) * safeLimit;
+    const safeLimit = Math.max(1, Math.min(Math.floor(Number(limit)) || 30, 500));
+    const skip = (Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)) - 1) * safeLimit;
 
     const [transactions, total] = await Promise.all([
       BonusTransaction.find()
@@ -185,7 +190,7 @@ exports.getAllTransactions = async (req, res) => {
 
     res.json({
       success: true, transactions,
-      pagination: { page: Number(page), limit: safeLimit, total },
+      pagination: { page: Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)), limit: safeLimit, total },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: msg(req, 'Ошибка сервера', 'Сервер катасы') });

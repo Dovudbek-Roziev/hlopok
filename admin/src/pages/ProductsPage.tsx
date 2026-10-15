@@ -52,6 +52,7 @@ const ProductForm = ({ product, categories, brands, onClose, onSaved }: any) => 
     setLoading(true);
     try {
       const fd = new FormData();
+      if (product) fd.append('expectedUpdatedAt', product.updatedAt);
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
       files.forEach(f => fd.append('images', f));
 

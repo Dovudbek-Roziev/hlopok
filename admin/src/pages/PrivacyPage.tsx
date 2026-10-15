@@ -15,7 +15,7 @@ const policies: Record<Language, { title: string; updated: string; sections: Pol
       { title: '3. Для чего нужны данные', text: 'Данные нужны для входа и защиты аккаунта, оформления и доставки заказов, связи с покупателем, работы бонусов, показа истории заказов, уведомлений о заказах и поддержки.' },
       { title: '4. Сервисы и подтверждение входа', text: 'Для работы используются MongoDB Atlas, Cloudinary, Expo Notifications и Nikita.kg. Коды подтверждения отправляются через Nikita.kg. Данные передаются этим сервисам только для выполнения соответствующих функций.' },
       { title: '5. Оплата и заказы', text: 'Приложение не получает и не хранит данные банковских карт. В системе сохраняются сумма заказа, выбранный способ оплаты и отметка о её подтверждении. История заказа может оставаться после удаления аккаунта в обезличенном виде для учёта и разрешения спорных ситуаций.' },
-      { title: '6. Удаление аккаунта', text: 'Удаление можно запросить в приложении, если нет активных заказов. Профиль деактивируется, личные контактные данные, адреса, избранное и данные устройств для уведомлений очищаются; отзывы удаляются. Данные заказа могут сохраниться без привязки к личности. Для удаления фотографии отправляется запрос в Cloudinary.' },
+      { title: '6. Удаление аккаунта', text: 'Удаление можно запросить в приложении, если нет активных заказов. Профиль обезличивается и доступ закрывается; пароль, личные контактные данные, адреса, избранное и данные устройств для уведомлений очищаются; отзывы удаляются. Данные заказа могут сохраниться без привязки к личности. Для удаления фотографии отправляется запрос в Cloudinary.' },
       { title: '7. Защита и хранение', text: 'Пароли хранятся в виде хешей, а доступ к аккаунту защищён авторизацией. Коды подтверждения удаляются после окончания срока действия. Остальные данные хранятся столько, сколько нужно для работы магазина и обработки заказов.' },
     ],
   },
@@ -29,7 +29,7 @@ const policies: Record<Language, { title: string; updated: string; sections: Pol
       { title: '3. Why we use it', text: 'Data is used to sign in and protect accounts, place and deliver orders, contact customers, manage bonuses, show order history, send order notifications, and provide support.' },
       { title: '4. Service providers and verification', text: 'The service uses MongoDB Atlas, Cloudinary, Expo Notifications, and Nikita.kg. Verification codes are sent through Nikita.kg. Data is shared with these providers only to deliver the related features.' },
       { title: '5. Payments and orders', text: 'The app does not collect or store bank-card details. It stores the order total, selected payment method, and payment confirmation status. Order history may remain in a de-identified form for records and dispute handling after an account is deleted.' },
-      { title: '6. Account deletion', text: 'You can request deletion in the app when there are no active orders. The profile is deactivated; personal contact details, addresses, favorites, and device notification data are cleared, and reviews are deleted. Order records may remain without identifying details. A request is sent to Cloudinary to delete the profile photo.' },
+      { title: '6. Account deletion', text: 'You can request deletion in the app when there are no active orders. The profile is de-identified and access is disabled; the password, personal contact details, addresses, favorites, and device notification data are cleared, and reviews are deleted. Order records may remain without identifying details. A request is sent to Cloudinary to delete the profile photo.' },
       { title: '7. Security and retention', text: 'Passwords are stored as hashes and account access requires authentication. Verification codes are deleted when they expire. Other data is kept for as long as needed to operate the store and handle orders.' },
     ],
   },
@@ -73,6 +73,11 @@ const PrivacyPage = () => {
         <p style={{ color: '#6B7280', fontSize: 14, margin: 0 }}>{policy.updated}</p>
       </header>
 
+      <aside id="delete-account" style={{ border: '1px solid #ddd', borderRadius: 12, padding: 16, marginBottom: 24 }}>
+        <h2>{language === 'ru' ? 'Удалить аккаунт Hlopok' : language === 'ky' ? 'Hlopok аккаунтун өчүрүү' : 'Delete your Hlopok account'}</h2>
+        <p>{language === 'ru' ? 'В приложении: Профиль → Данные и настройки. Если приложение недоступно или есть активный заказ, отправьте запрос на удаление по email. Укажите номер аккаунта; пароль и OTP не отправляйте. Поддержка подтвердит владение аккаунтом и сообщит порядок удаления и обязательного хранения данных.' : language === 'ky' ? 'Колдонмодо: Профиль → Маалыматтар жана жөндөөлөр. Колдонмо жеткиликсиз же активдүү буйрутма болсо, email аркылуу өчүрүү өтүнүчүн жөнөтүңүз. Аккаунттун номерин жазыңыз; сырсөздү жана OTP кодду жөнөтпөңүз. Колдоо аккаунтту текшерип, өчүрүү жана милдеттүү сактоо тартибин билдирет.' : 'In the app: Profile → Data and settings. If the app is unavailable or an order is active, email a deletion request with your account phone number. Do not send passwords or OTP codes. Support will verify ownership and explain deletion and required retention.'}</p>
+        <a href="mailto:hlopokosh@gmail.com?subject=Hlopok%20account%20deletion">hlopokosh@gmail.com</a>
+      </aside>
       {policy.sections.map(section => (
         <section key={section.title} style={{ marginBottom: 24 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: '#111827' }}>{section.title}</h2>

@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const VariantSchema = new mongoose.Schema({
   size:  { type: String, required: true }, // '80', '86', '92', '98', '104', '110', '116'
   color: { type: String, default: '' },
-  stock: { type: Number, default: 0, min: 0 },
+  stock: { type: Number, default: 0, min: 0, validate: Number.isInteger },
 }, { _id: false });
 
 const ProductSchema = new mongoose.Schema({
@@ -39,7 +39,7 @@ const ProductSchema = new mongoose.Schema({
   },
 
   // O'lcham+rang bo'yicha ombor / Stock per size+color combination
-  variants: [VariantSchema],
+  variants: { type: [VariantSchema], validate: { validator: values => new Set(values.map(v => JSON.stringify([v.size, v.color || '']))).size === values.length, message: 'Duplicate size/color variant' } },
 
   // Holat / Status
   isActive:     { type: Boolean, default: true },

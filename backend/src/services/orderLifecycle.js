@@ -21,7 +21,7 @@ async function grantReadyOrderBonus(orderId) {
       }
 
       const user = await User.findById(order.user).session(session);
-      if (!user || user.bonusExpiryProcessedAt) return;
+      if (!user || user.isActive === false || user.bonusExpiryProcessedAt) return;
       const settings = await BonusSettings.findOne().session(session);
       const expiresAt = user.bonusExpiresAt || new Date(user.createdAt.getTime() + (settings?.expiryDays ?? 90) * 86400000);
       if (expiresAt <= new Date()) return;
@@ -64,8 +64,8 @@ async function cancelOrderAndRestore({ orderId, expectedStatus, userId, reason =
       for (const item of order.items) {
         const color = item.color ?? '';
         const stock = await Product.updateOne(
-          { _id: item.product, variants: { $elemMatch: { size: item.size, color } } },
-          { $inc: { 'variants.$[v].stock': item.qty, totalSold: -item.qty } },
+          { _id: item.product, variants: { $elemMatch: { size: item.size, color } }, $expr: { $eq: [{ $size: { $filter: { input: '$variants', as: 'variant', cond: { $and: [{ $eq: ['$$variant.size', item.size] }, { $eq: ['$$variant.color', color] }] } } } }, 1] } },
+          { $inc: { 'variants.$[v].stock': item.qty, totalSold: -item.qty, __v: 1 } },
           { arrayFilters: [{ 'v.size': item.size, 'v.color': color }], session }
         );
         if (stock.modifiedCount !== 1) throw new Error('Order stock variant missing during cancellation');
@@ -73,7 +73,7 @@ async function cancelOrderAndRestore({ orderId, expectedStatus, userId, reason =
         if (item.promotionId) {
           await Promotion.updateOne(
             { _id: item.promotionId, products: { $elemMatch: { product: item.product, limit: { $type: 'number' } } } },
-            { $inc: { 'products.$.limit': item.qty } }, { session }
+            { $inc: { 'products.$.limit': item.qty, __v: 1 } }, { session }
           );
         }
       }
@@ -81,6 +81,11 @@ async function cancelOrderAndRestore({ orderId, expectedStatus, userId, reason =
       const user = await User.findById(order.user).session(session);
       const earnedTx = await BonusTransaction.findOne({ order: order._id, type: 'earned' }).session(session);
       if (user) {
+        const bonusOpen = user.bonusExpiresAt > new Date() && !user.bonusExpiryProcessedAt;
+        const refund = bonusOpen ? order.bonusUsed : 0;
+        if (earnedTx && bonusOpen && user.bonusBalance + refund < earnedTx.amount) {
+          throw Object.assign(conflict(), { ru: 'Бонус заказа уже потрачен. Обратитесь в магазин для расчёта возврата', ky: 'Буйрутманын бонусу сарпталган. Кайтарууну дүкөн менен тактаңыз' });
+        }
         if (order.bonusUsed > 0 && user.bonusExpiresAt > new Date() && !user.bonusExpiryProcessedAt) {
           user.bonusBalance += order.bonusUsed;
           user.totalSaved = Math.max(0, user.totalSaved - order.bonusUsed);
@@ -90,8 +95,8 @@ async function cancelOrderAndRestore({ orderId, expectedStatus, userId, reason =
             description_ky: `${order.orderNumber} жокко чыгарылды, бонус кайтарылды`,
           }], { session });
         }
-        if (earnedTx) {
-          const revoked = Math.min(user.bonusBalance, earnedTx.amount);
+        if (earnedTx && bonusOpen) {
+          const revoked = earnedTx.amount;
           user.bonusBalance -= revoked;
           if (revoked > 0) await BonusTransaction.create([{
             user: user._id, type: 'expired', amount: revoked, order: order._id,

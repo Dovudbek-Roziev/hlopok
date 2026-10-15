@@ -1,3 +1,4 @@
+import AccountSettingsScreen from '../screens/profile/AccountSettingsScreen';
 // Asosiy tab navigatsiya / Main tab navigation
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -82,6 +83,7 @@ const OrdersStackNav = () => (
 
 const ProfileStackNav = () => (
   <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+    <ProfileStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
     <ProfileStack.Screen name="Profile"        component={ProfileScreen} />
     <ProfileStack.Screen name="EditProfile"    component={EditProfileScreen} />
     <ProfileStack.Screen name="Favorites"      component={FavoritesScreen} />

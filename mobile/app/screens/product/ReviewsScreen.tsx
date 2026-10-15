@@ -4,10 +4,12 @@ import { ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform
 import { YStack, XStack, Text, Spinner } from 'tamagui';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Star, MessageSquare, User } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import { productsApi } from '../../api/products';
+import { authApi } from '../../api/auth';
+import ReviewRules from '../../components/ReviewRules';
 import { useAuthStore } from '../../store/authStore';
 import { useColors } from '../../theme/useColors';
 import { formatDate } from '../../utils/format';
@@ -31,7 +33,8 @@ const StarRater = ({ value, onChange, size = 36 }: { value: number; onChange: (v
 };
 
 // ─── Bir review kartasi / Review card ────────────────────────────
-const ReviewCard = ({ review }: { review: any }) => {
+const ReviewCard = ({ review, onReport, onBlock }: { review: any; onReport?: () => void; onBlock?: () => void }) => {
+  const { t } = useTranslation();
   const Colors = useColors();
   return (
     <YStack backgroundColor={Colors.white} borderRadius={14} padding={14} gap={8}>
@@ -52,6 +55,8 @@ const ReviewCard = ({ review }: { review: any }) => {
           ))}
         </XStack>
       </XStack>
+      {onReport && <TouchableOpacity onPress={onReport} accessibilityRole="button"><Text color={Colors.grayDark}>{t('release.report')}</Text></TouchableOpacity>}
+      {onBlock && <TouchableOpacity onPress={onBlock} accessibilityRole="button"><Text color={Colors.grayDark}>{t('release.block')}</Text></TouchableOpacity>}
       {!!review.comment && (
         <Text color={Colors.grayDark} fontSize={14} lineHeight={20}>{review.comment}</Text>
       )}
@@ -67,19 +72,23 @@ const ReviewsScreen = () => {
   const navigation  = useNavigation<any>();
   const route       = useRoute<any>();
   const qc          = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   const { productId, productName } = route.params as { productId: string; productName: string };
 
+  const [acceptRules, setAcceptRules] = useState(false);
   const [myRating,  setMyRating]  = useState(0);
   const [myComment, setMyComment] = useState('');
   const [reviewMsg, setReviewMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   // Barcha reviewlar
-  const { data: reviewData, isLoading } = useQuery({
-    queryKey: ['reviews', productId],
-    queryFn:  () => productsApi.getReviews(productId).then(r => r.data),
+  const { data: reviewPages, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['review-list', productId],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => productsApi.getReviews(productId, pageParam).then(r => r.data),
+    getNextPageParam: last => last.page < last.pages ? last.page + 1 : undefined,
   });
+  const reviewData = reviewPages?.pages[0];
 
   // Bu foydalanuvchi review yoza oladimi
   const { data: canData } = useQuery({
@@ -89,9 +98,10 @@ const ReviewsScreen = () => {
   });
 
   const mutation = useMutation({
-    mutationFn: () => productsApi.createReview(productId, { rating: myRating, comment: myComment }),
+    mutationFn: () => productsApi.createReview(productId, { rating: myRating, comment: myComment, acceptRules }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reviews', productId] });
+      qc.invalidateQueries({ queryKey: ['review-list', productId] });
       qc.invalidateQueries({ queryKey: ['can-review', productId] });
       qc.invalidateQueries({ queryKey: ['product-rating', productId] });
       setMyRating(0);
@@ -108,7 +118,7 @@ const ReviewsScreen = () => {
     mutation.mutate();
   };
 
-  const reviews    = reviewData?.reviews || [];
+  const reviews = reviewPages?.pages.flatMap(page => page.reviews) || [];
   const avgRating  = reviewData?.avgRating || 0;
   const count      = reviewData?.count || 0;
   const canReview  = canData?.canReview ?? false;
@@ -189,6 +199,7 @@ const ReviewsScreen = () => {
                 placeholderTextColor={Colors.gray}
               />
 
+              <ReviewRules value={acceptRules} onChange={setAcceptRules} />
               {!!reviewMsg && (
                 <YStack borderRadius={12} padding={12}
                   backgroundColor={reviewMsg.ok ? Colors.greenBg : Colors.redBg}
@@ -201,7 +212,7 @@ const ReviewsScreen = () => {
 
               <TouchableOpacity
                 onPress={handleSubmit}
-                disabled={myRating === 0 || mutation.isPending}
+                disabled={!acceptRules || myRating === 0 || mutation.isPending}
                 style={{
                   backgroundColor: myRating > 0 ? Colors.yellow : Colors.grayLight,
                   borderRadius: 14, height: 50,
@@ -254,8 +265,11 @@ const ReviewsScreen = () => {
 
           {/* Reviews list */}
           {reviews.map((r: any) => (
-            <ReviewCard key={r._id} review={r} />
+            <ReviewCard key={r._id} review={r}
+              onReport={isAuthenticated ? async () => { try { await productsApi.reportReview(productId, r._id); setReviewMsg({ text: t('release.reported'), ok: true }); } catch { setReviewMsg({ text: t('common.error'), ok: false }); } } : undefined}
+              onBlock={isAuthenticated && r.user?._id && r.user._id !== user?._id ? async () => { try { await authApi.setBlock(r.user._id, true); qc.invalidateQueries({ queryKey: ['review-list'] }); } catch { setReviewMsg({ text: t('common.error'), ok: false }); } } : undefined} />
           ))}
+          {hasNextPage && <TouchableOpacity disabled={isFetchingNextPage} onPress={() => fetchNextPage()}><Text color={Colors.black}>{t('release.more')}</Text></TouchableOpacity>}
         </ScrollView>
       </KeyboardAvoidingView>
     </YStack>

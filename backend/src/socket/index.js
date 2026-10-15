@@ -13,6 +13,7 @@ const initSocket = (io) => {
         if (!user || !user.isActive || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
           return next(new Error('Unauthorized'));
         }
+        socket.authToken = token;
         socket.userId = decoded.id;
         socket.userRole = user.role;
       }
@@ -23,6 +24,23 @@ const initSocket = (io) => {
     }
   });
 
+  const checkSessions = setInterval(async () => {
+    const sockets = [...io.sockets.sockets.values()].filter(s => s.userId);
+    if (!sockets.length) return;
+    try {
+      const users = await User.find({ _id: { $in: [...new Set(sockets.map(s => s.userId))] } }).select('_id isActive tokenVersion role').lean();
+      const byId = new Map(users.map(u => [String(u._id), u]));
+      for (const socket of sockets) {
+        try {
+          const claims = jwt.verify(socket.authToken, process.env.JWT_SECRET);
+          const user = byId.get(socket.userId);
+          if (!user?.isActive || (user.tokenVersion || 0) !== (claims.tokenVersion || 0) || user.role !== socket.userRole) socket.disconnect(true);
+        } catch { socket.disconnect(true); }
+      }
+    } catch { for (const socket of sockets) socket.disconnect(true); }
+  }, 30000);
+  checkSessions.unref();
+  io.httpServer?.once('close', () => clearInterval(checkSessions));
   io.on('connection', (socket) => {
     // Foydalanuvchi o'z xonasiga kiradi / User joins their room
     if (socket.userId) {

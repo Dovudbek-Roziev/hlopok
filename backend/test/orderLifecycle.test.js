@@ -133,3 +133,16 @@ test('cancelling a rewarded order removes its earned bonus', async () => {
     assert.equal(get().transactions.filter(tx => tx.type === 'expired').length, 1);
   });
 });
+
+test('spent cashback blocks automatic cancellation without changing stock or order', async () => {
+  const initial = base();
+  initial.order.status = 'ready'; initial.order.bonusUsed = 0;
+  initial.user.bonusBalance = 0;
+  initial.transactions.push({ order: 'order-1', type: 'earned', amount: 5 });
+  await withStore(initial, async get => {
+    await assert.rejects(cancelOrderAndRestore({ orderId: 'order-1', expectedStatus: 'ready' }), { statusCode: 409 });
+    assert.equal(get().order.status, 'ready');
+    assert.equal(get().product.stock, 3);
+    assert.equal(get().user.bonusBalance, 0);
+  });
+});

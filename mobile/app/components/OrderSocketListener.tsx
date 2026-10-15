@@ -1,3 +1,5 @@
+import { AppState } from 'react-native';
+import { authApi } from '../api/auth';
 import { useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -20,7 +22,11 @@ const OrderSocketListener = () => {
 
     const socket = io(SOCKET_URL, { auth: { token } });
 
+    const refresh = () => authApi.getMe().then(r => useAuthStore.getState().updateUser(r.data.user)).catch(() => {});
+    const foreground = AppState.addEventListener('change', state => { if (state === 'active') { refresh(); queryClient.invalidateQueries({ queryKey: ['my-orders'] }); } });
     socket.on('order_status_updated', (data: any) => {
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ['bonus-history'] });
       queryClient.invalidateQueries({ queryKey: ['my-orders'] });
       queryClient.invalidateQueries({ queryKey: ['order', data.orderId] });
       if (data.status === 'ready') {
@@ -35,7 +41,7 @@ const OrderSocketListener = () => {
       toast.info(`${tr('orders.orderNumber')} ${data.orderNumber}: ${tr(`orders.status_${data.status}`)}`);
     });
 
-    return () => { socket.disconnect(); };
+    return () => { foreground.remove(); socket.disconnect(); };
   }, [isAuthenticated, token]);
 
   return null;

@@ -1,6 +1,18 @@
 // Mahsulot kontrolleri / Product controller
 const Product = require('../models/Product');
 const Review  = require('../models/Review');
+const Order = require('../models/Order');
+
+async function validateVariantRemoval(productId, variants) {
+  const existing = await Product.findById(productId).select('variants');
+  const keys = new Set(variants.map(v => JSON.stringify([v.size, v.color || ''])));
+  for (const variant of existing?.variants || []) {
+    if (!keys.has(JSON.stringify([variant.size, variant.color || ''])) && await Order.exists({ status: { $ne: 'cancelled' }, items: { $elemMatch: { product: productId, size: variant.size, color: variant.color || '' } } })) {
+      throw Object.assign(new Error('Variant referenced by order'), { statusCode: 409 });
+    }
+  }
+}
+
 const msg = require('../utils/msg');
 const { uploadToCloudinary } = require('../utils/cloudinaryUpload');
 
@@ -13,7 +25,7 @@ exports.getProducts = async (req, res) => {
       sort = '-createdAt', page = 1, limit = 20,
     } = req.query;
 
-    const safeLimit = Math.min(Number(limit) || 20, 500);
+    const safeLimit = Math.max(1, Math.min(Math.floor(Number(limit)) || 20, 500));
 
     // isActive=all — faqat admin uchun, barcha mahsulotlar
     const isAdminMode = isActive === 'all' && req.user?.role === 'admin';
@@ -39,13 +51,14 @@ exports.getProducts = async (req, res) => {
       'popular':    { totalSold: -1 },
     };
 
-    const skip = (Number(page) - 1) * safeLimit;
+    const skip = (Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)) - 1) * safeLimit;
 
     // Top rated — reviewlar bo'yicha saralash (0 review bo'lsa ham ko'rinadi)
     if (sort === 'top_rated') {
       const pipeline = [
         { $match: filter },
         { $lookup: { from: 'reviews', localField: '_id', foreignField: 'product', as: '_reviews' } },
+        { $set: { _reviews: { $filter: { input: '$_reviews', as: 'review', cond: { $eq: ['$$review.approved', true] } } } } },
         { $addFields: { avgRating: { $ifNull: [{ $avg: '$_reviews.rating' }, 0] }, reviewCount: { $size: '$_reviews' } } },
         { $sort: { avgRating: -1, reviewCount: -1, createdAt: -1 } },
       ];
@@ -62,7 +75,7 @@ exports.getProducts = async (req, res) => {
         ]),
       ]);
       const total = countResult[0]?.total || 0;
-      return res.json({ success: true, products, pagination: { page: Number(page), limit: safeLimit, total, pages: Math.ceil(total / safeLimit) } });
+      return res.json({ success: true, products, pagination: { page: Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)), limit: safeLimit, total, pages: Math.ceil(total / safeLimit) } });
     }
 
     const sortObj = sortMap[sort] || { createdAt: -1 };
@@ -80,7 +93,7 @@ exports.getProducts = async (req, res) => {
       success: true,
       products,
       pagination: {
-        page: Number(page),
+        page: Math.max(1, Math.min(100000, Math.floor(Number(page)) || 1)),
         limit: safeLimit,
         total,
         pages: Math.ceil(total / safeLimit),
@@ -161,6 +174,8 @@ exports.updateProduct = async (req, res) => {
   try {
     const { name_ru, name_ky, description_ru, description_ky, category, brand,
             isNew, isBestseller, isActive, variants, price } = req.body;
+    const expectedUpdatedAt = new Date(req.body.expectedUpdatedAt);
+    if (!Number.isFinite(expectedUpdatedAt.getTime())) return res.status(409).json({ success: false, message: msg(req, 'Обновите товар и повторите', 'Товарды жаңылап, кайталаңыз') });
     const updates = {};
     if (name_ru       !== undefined) updates.name_ru       = name_ru;
     if (name_ky       !== undefined) updates.name_ky       = name_ky;
@@ -178,15 +193,17 @@ exports.updateProduct = async (req, res) => {
       updates.images = await Promise.all(req.files.map(f => uploadToCloudinary(f.buffer, f.mimetype, 'hlopok/products')));
     }
 
-    const product = await Product.findByIdAndUpdate(req.params.id, updates, {
+    if (updates.variants) await validateVariantRemoval(req.params.id, updates.variants);
+    const product = await Product.findOneAndUpdate({ _id: req.params.id, updatedAt: expectedUpdatedAt }, { $set: updates, $inc: { __v: 1 } }, {
       new: true,
       runValidators: true,
     }).populate(['category', 'brand']);
 
-    if (!product) return res.status(404).json({ success: false, message: msg(req, 'Товар не найден', 'Товар табылган жок') });
+    if (!product) return res.status(409).json({ success: false, message: msg(req, 'Товар изменился. Откройте форму заново', 'Товар өзгөрдү. Форманы кайра ачыңыз') });
     res.json({ success: true, product });
   } catch (error) {
-    console.error('updateProduct error:', error);
+    console.error('updateProduct error:', error.name);
+    if (error.statusCode === 409) return res.status(409).json({ success: false, message: msg(req, 'Нельзя удалить вариант из существующего заказа', 'Буйрутмадагы вариантты өчүрүүгө болбойт') });
     res.status(500).json({ success: false, message: msg(req, 'Ошибка обновления товара', 'Товарды жаңыртууда ката') });
   }
 };
@@ -272,9 +289,10 @@ exports.updateStock = async (req, res) => {
       }
       updates.price = parsedPrice;
     }
+    if (updates.variants) await validateVariantRemoval(req.params.id, updates.variants);
     const product = await Product.findOneAndUpdate(
       { _id: req.params.id, updatedAt },
-      { $set: updates },
+      { $set: updates, $inc: { __v: 1 } },
       { new: true, runValidators: true }
     );
     if (!product) {
@@ -287,6 +305,6 @@ exports.updateStock = async (req, res) => {
 
     res.json({ success: true, product });
   } catch (error) {
-    res.status(500).json({ success: false, message: msg(req, 'Ошибка обновления склада', 'Кампарды жаңыртууда ката') });
+    res.status(error.statusCode || 500).json({ success: false, message: msg(req, 'Не удалось обновить склад. Варианты из заказов нельзя удалять', 'Кампа жаңырган жок. Буйрутмадагы варианттарды өчүрүүгө болбойт') });
   }
 };

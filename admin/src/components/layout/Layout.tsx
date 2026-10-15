@@ -16,6 +16,7 @@ const MOBILE_MENU = [
 
 const PAGE_TITLES: Record<string, string> = {
   '/':           'sidebar.dashboard',
+  '/reviews': 'moderation.title',
   '/orders':     'sidebar.orders',
   '/products':   'sidebar.products',
   '/inventory':  'sidebar.inventory',

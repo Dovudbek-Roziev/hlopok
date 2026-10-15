@@ -1,3 +1,5 @@
+localStorage.removeItem('admin_token');
+localStorage.removeItem('admin_user');
 import { create } from 'zustand';
 
 interface AdminState {
@@ -13,44 +15,46 @@ interface AdminState {
 }
 
 const savedAdmin = () => {
-  try { return JSON.parse(localStorage.getItem('admin_user') || 'null'); }
+  try { return JSON.parse(sessionStorage.getItem('admin_user') || 'null'); }
   catch { return null; }
 };
 
 export const useAdminStore = create<AdminState>((set, get) => ({
-  token:           localStorage.getItem('admin_token'),
+  token:           sessionStorage.getItem('admin_token'),
   admin:           savedAdmin(),
-  isAuthenticated: !!localStorage.getItem('admin_token'),
-  newOrderCount:   Number(localStorage.getItem('admin_new_orders') || 0),
+  isAuthenticated: !!sessionStorage.getItem('admin_token'),
+  newOrderCount:   Number(sessionStorage.getItem('admin_new_orders') || 0),
 
   setAuth: (token, admin) => {
-    localStorage.setItem('admin_token', token);
-    localStorage.setItem('admin_user', JSON.stringify(admin));
+    sessionStorage.setItem('admin_token', token);
+    sessionStorage.setItem('admin_user', JSON.stringify(admin));
     set({ token, admin, isAuthenticated: true });
   },
 
   updateAdmin: (updates) => {
     const current = get().admin;
     const updated = { ...current, ...updates };
-    localStorage.setItem('admin_user', JSON.stringify(updated));
+    sessionStorage.setItem('admin_user', JSON.stringify(updated));
     set({ admin: updated });
   },
 
   logout: () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    localStorage.removeItem('admin_new_orders');
+    const token = get().token;
+    if (token) void fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_user');
+    sessionStorage.removeItem('admin_new_orders');
     set({ token: null, admin: null, isAuthenticated: false, newOrderCount: 0 });
   },
 
   addNewOrder: () => {
     const count = get().newOrderCount + 1;
-    localStorage.setItem('admin_new_orders', String(count));
+    sessionStorage.setItem('admin_new_orders', String(count));
     set({ newOrderCount: count });
   },
 
   clearNewOrders: () => {
-    localStorage.removeItem('admin_new_orders');
+    sessionStorage.removeItem('admin_new_orders');
     set({ newOrderCount: 0 });
   },
 }));

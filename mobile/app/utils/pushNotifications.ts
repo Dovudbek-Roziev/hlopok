@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { Platform, Alert, Linking } from 'react-native';
+import { Platform } from 'react-native';
 import api from '../api/client';
 
 const isExpoGo =
@@ -23,14 +24,6 @@ const TEXTS = {
   },
 };
 
-const showEducationalAlert = (lang: string) => {
-  const t = TEXTS[lang as keyof typeof TEXTS] || TEXTS.ru;
-  Alert.alert(t.title, t.message, [
-    { text: t.cancel, style: 'cancel' },
-    { text: t.settings, onPress: () => Linking.openSettings() },
-  ]);
-};
-
 export const registerForPushNotifications = async (lang = 'ru'): Promise<string | null> => {
   if (isExpoGo) return null;
 
@@ -46,28 +39,19 @@ export const registerForPushNotifications = async (lang = 'ru'): Promise<string 
       }),
     });
 
-    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
-    if (status !== 'granted') {
-      if (!canAskAgain) {
-        showEducationalAlert(lang);
-        return null;
-      }
-      const requested = await Notifications.requestPermissionsAsync();
-      if (requested.status !== 'granted') {
-        showEducationalAlert(lang);
-        return null;
-      }
-    }
-
     if (Platform.OS === 'android') {
       const t = TEXTS[lang as keyof typeof TEXTS] || TEXTS.ru;
       await Notifications.setNotificationChannelAsync('orders', {
-        name: t.channel,
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FFD700',
-        sound: 'default',
+        name: t.channel, importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250], lightColor: '#FFD700', sound: 'default',
       });
+    }
+    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      if (!canAskAgain || await AsyncStorage.getItem('push-permission-requested')) return null;
+      await AsyncStorage.setItem('push-permission-requested', '1');
+      const requested = await Notifications.requestPermissionsAsync();
+      if (requested.status !== 'granted') return null;
     }
 
     const projectId =

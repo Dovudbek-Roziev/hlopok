@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, MapPin, Clock, Star, Banknote, CreditCard, Truck, QrCode } from 'lucide-react-native';
 import ScreenWrapper from '../../components/ScreenWrapper';
+import { authApi } from '../../api/auth';
 import { ordersApi } from '../../api/orders';
 import { bonusApi } from '../../api/categories';
 import { useCartStore } from '../../store/cartStore';
@@ -33,7 +34,7 @@ const CheckoutScreen = () => {
   const [name, setName]                   = useState(user ? `${user.firstName} ${user.lastName}`.trim() : '');
   const [phone, setPhone]                 = useState(user?.phone || '');
   const submitting                         = useRef(false);
-  const clientRequestId = useRef(`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`).current;
+  const requestId = useRef(`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
   const isMounted                          = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
   const [deliveryAddress, setAddress]     = useState('');
@@ -75,7 +76,7 @@ const CheckoutScreen = () => {
     submitting.current = true;
     try {
       const res = await ordersApi.createOrder({
-        clientRequestId,
+        clientRequestId: requestId.current,
         items: items.map(i => ({
           productId:   i.productId,
           size:        i.size,
@@ -93,25 +94,27 @@ const CheckoutScreen = () => {
       });
       const order = res.data.order;
       clearCart();
+      authApi.getMe().then(r => useAuthStore.getState().updateUser(r.data.user)).catch(() => {});
       const params = {
         orderNumber:     order.orderNumber,
         orderId:         order._id,
         total:           order.total,
         subtotal:        order.subtotal,
         bonusUsed:       order.bonusUsed,
-        deliveryType:    method,
-        deliveryAddress: method === 'delivery' ? deliveryAddress.trim() : '',
-        contactName:     name.trim(),
-        contactPhone:    phone.trim(),
-        note:            note.trim(),
+        deliveryType:    order.deliveryType,
+        deliveryAddress: order.deliveryAddress,
+        contactName:     order.contactName,
+        contactPhone:    order.contactPhone,
+        note:            order.note,
         items:           order.items,
       };
-      if (payment === 'online') {
+      if (order.paymentMethod === 'online' && !order.paymentConfirmed) {
         navigation.replace('Payment', params);
       } else {
         navigation.replace('OrderSuccess', { ...params, paymentMethod: 'cash' });
       }
     } catch (err: any) {
+      if (err.response?.status >= 400 && err.response?.status < 500) requestId.current = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
       if (isMounted.current) setError(err.response?.data?.message || t('common.error'));
     } finally {
       submitting.current = false;

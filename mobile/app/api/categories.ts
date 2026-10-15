@@ -19,7 +19,7 @@ export const promotionsApi = {
 };
 
 export const bonusApi = {
-  getMyHistory:  () => api.get('/bonus/my'),
+  getMyHistory: (page = 1) => api.get('/bonus/my', { params: { page } }),
   getSettings:   () => api.get('/bonus/settings'),
 };
 
