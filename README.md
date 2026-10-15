@@ -1,107 +1,73 @@
 # Hlopok
 
+### Children's clothing store | Mobile app, admin panel, and API
+
+Hlopok is a multilingual commerce project for browsing children's clothing, placing orders, and managing store operations. It brings the customer experience, store administration, and backend services together in one codebase.
+
+## Product
+
+- **Mobile app** — product catalog, search and filters, favorites, cart, checkout, order history, bonus card, and push notification support.
+- **Admin panel** — dashboard, products, inventory, orders, promotions, customers, reviews, store settings, and bonus rules.
+- **Backend API** — authentication, catalog and inventory, order lifecycle, bonuses, reviews, image handling, and real-time events.
+- **Languages** — Russian and Kyrgyz in the mobile app and API messages; Russian, Kyrgyz, and English in project documentation.
+
+## Technology
+
+| Area | Stack |
+| --- | --- |
+| Mobile | React Native, Expo SDK 57, TypeScript, React Navigation, Zustand |
+| Admin | React, TypeScript, Vite, TanStack Query |
+| Backend | Node.js 22+, Express, MongoDB, Mongoose, Socket.IO |
+| Integrations | Nikita.kg OTP delivery, Cloudinary media storage, Expo Notifications |
+
+## Repository
+
+```text
+admin/      Store administration web app
+backend/    Express API and database models
+mobile/     Expo mobile application
+```
+
+## Local development
+
+Use Node.js 22 or later for the backend. Install dependencies separately in each application:
+
+```sh
+cd backend && npm install
+cd ../admin && npm install
+cd ../mobile && npm install
+```
+
+Configure the required local environment variables in `backend/.env` and the mobile API URL in the Expo environment. Keep credentials and service keys out of version control. Use a dedicated development database for local work.
+
+Run each service in its own terminal:
+
+```sh
+cd backend && npm run dev
+cd admin && npm run dev
+cd mobile && npm start
+```
+
 ## Русский
 
-Hlopok — интернет-магазин детской одежды. В проект входят мобильное приложение для покупателей, веб-панель магазина и сервер API.
+Hlopok — проект интернет-магазина детской одежды: мобильное приложение для покупателей, веб-панель управления и сервер API.
 
-- `mobile/` — приложение на Expo и React Native. Интерфейс: русский и кыргызский языки.
-- `admin/` — панель управления товарами, заказами, складом, акциями, пользователями и бонусами.
-- `backend/` — API на Node.js и Express, база MongoDB, загрузка изображений и служебные уведомления.
-- Коды подтверждения входа отправляются через Nikita.kg.
-- Фотографии хранятся в Cloudinary. Push-уведомления отправляются через Expo Notifications.
-- Оплату подтверждает магазин; приложение не обрабатывает данные банковских карт.
-- Бонусные правила настраиваются в панели управления.
+- **Приложение:** каталог, поиск, избранное, корзина, оформление и история заказов, бонусная карта и поддержка push-уведомлений.
+- **Панель управления:** товары, склад, заказы, акции, клиенты, отзывы, настройки магазина и бонусные правила.
+- **Сервер:** авторизация, каталог и остатки, обработка заказов, бонусы, отзывы, изображения и события в реальном времени.
+- **Технологии:** React Native, Expo SDK 57, React, TypeScript, Vite, Node.js, Express, MongoDB и Socket.IO.
+- **Интеграции:** доставка кодов подтверждения через Nikita.kg, хранение изображений в Cloudinary, push через Expo Notifications.
 
-### Запуск на компьютере
-
-Установите Node.js, затем установите зависимости в каждой папке:
-
-```sh
-cd backend && npm install
-cd ../admin && npm install
-cd ../mobile && npm install
-```
-
-Создайте локальный `backend/.env` с настройками MongoDB, JWT, Nikita.kg и Cloudinary. Не публикуйте секреты и не запускайте команды заполнения базы на рабочей базе.
-
-Запускайте каждую часть в отдельном терминале:
-
-```sh
-cd backend && npm run dev
-cd admin && npm run dev
-cd mobile && npm start
-```
-
-Для мобильного приложения задайте `EXPO_PUBLIC_API_URL` и `EXPO_PUBLIC_SOCKET_URL`, если сервер API работает не по адресу по умолчанию.
-
----
-
-## English
-
-Hlopok is an online children's clothing store. The project includes a customer mobile app, a store administration website, and an API server.
-
-- `mobile/` — Expo and React Native app. The app interface is in Russian and Kyrgyz.
-- `admin/` — tools for products, orders, inventory, promotions, customers, and bonuses.
-- `backend/` — Node.js and Express API, MongoDB database, image uploads, and service notifications.
-- Sign-in verification codes are delivered through Nikita.kg.
-- Product images are stored in Cloudinary. Push notifications use Expo Notifications.
-- The store confirms payments; the app does not process bank-card details.
-- Bonus rules are managed in the admin panel.
-
-### Run locally
-
-Install Node.js, then install dependencies in each folder:
-
-```sh
-cd backend && npm install
-cd ../admin && npm install
-cd ../mobile && npm install
-```
-
-Create a local `backend/.env` with MongoDB, JWT, Nikita.kg, and Cloudinary settings. Keep secrets private, and do not run database-seeding commands against a live store database.
-
-Run each part in a separate terminal:
-
-```sh
-cd backend && npm run dev
-cd admin && npm run dev
-cd mobile && npm start
-```
-
-Set `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_SOCKET_URL` for the mobile app when the API is not using its default address.
-
----
+Для локальной разработки требуется Node.js 22 или новее. Установите зависимости отдельно в `backend/`, `admin/` и `mobile/`, настройте локальные переменные окружения и запускайте каждую часть своей командой из раздела выше. Не добавляйте ключи и пароли в Git.
 
 ## Кыргызча
 
-Hlopok — балдар кийимдеринин интернет-дүкөнү. Долбоор кардарлар үчүн мобилдик колдонмодон, дүкөндүн башкаруу панелинен жана API серверинен турат.
+Hlopok — балдар кийимдеринин интернет-дүкөнү үчүн түзүлгөн долбоор. Ал кардарлардын мобилдик колдонмосун, башкаруу панелин жана API серверин бириктирет.
 
-- `mobile/` — Expo жана React Native менен жасалган колдонмо. Колдонмонун тили орусча жана кыргызча.
-- `admin/` — товарларды, буйрутмаларды, кампаны, акцияларды, кардарларды жана бонустарды башкаруу панели.
-- `backend/` — Node.js жана Express API, MongoDB базасы, сүрөт жүктөө жана кызматтык билдирмелер.
-- Кирүүнү тастыктоо коддору Nikita.kg аркылуу жөнөтүлөт.
-- Товарлардын сүрөттөрү Cloudinary'де сакталат. Push-билдирмелер Expo Notifications аркылуу жөнөтүлөт.
-- Төлөмдү дүкөн ырастайт; колдонмо банк картасынын маалыматтарын иштетпейт.
-- Бонустардын эрежелери башкаруу панелинен жөндөлөт.
+- **Мобилдик колдонмо:** товарлар каталогу, издөө, тандалгандар, себет, буйрутма берүү жана тарыхы, бонус картасы жана push-билдирмелерди колдоо.
+- **Башкаруу панели:** товарлар, кампа, буйрутмалар, акциялар, кардарлар, пикирлер, дүкөн жөндөөлөрү жана бонус эрежелери.
+- **Сервер:** кирүү, каталог жана калдыктар, буйрутмаларды иштетүү, бонустар, пикирлер, сүрөттөр жана реалдуу убакыттагы окуялар.
+- **Технологиялар:** React Native, Expo SDK 57, React, TypeScript, Vite, Node.js, Express, MongoDB жана Socket.IO.
+- **Интеграциялар:** тастыктоо коддору Nikita.kg аркылуу жөнөтүлөт, сүрөттөр Cloudinary'де сакталат, push-билдирмелер Expo Notifications аркылуу колдоого алынат.
 
-### Компьютерде иштетүү
-
-Node.js орнотуп, ар бир папкада көз карандылыктарды орнотуңуз:
-
-```sh
-cd backend && npm install
-cd ../admin && npm install
-cd ../mobile && npm install
-```
-
-MongoDB, JWT, Nikita.kg жана Cloudinary жөндөөлөрү менен жергиликтүү `backend/.env` файлын түзүңүз. Жашыруун маалыматтарды жарыялабаңыз жана базаны толтуруучу буйруктарды иштеп жаткан дүкөндүн базасында колдонбоңуз.
-
-Ар бир бөлүктү өзүнчө терминалда иштетиңиз:
-
-```sh
-cd backend && npm run dev
-cd admin && npm run dev
-cd mobile && npm start
-```
-
-API серверинин демейки дареги башка болсо, мобилдик колдонмого `EXPO_PUBLIC_API_URL` жана `EXPO_PUBLIC_SOCKET_URL` маанилерин бериңиз.
+Жергиликтүү иштеп чыгуу үчүн Node.js 22 же андан жаңы версиясы керек. `backend/`, `admin/` жана `mobile/` папкаларындагы көз карандылыктарды өз-өзүнчө орнотуп, жергиликтүү жөндөөлөрдү конфигурациялаңыз. Сырсөздөрдү жана ачкычтарды Git'ке кошпоңуз.

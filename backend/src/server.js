@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const msg = require('./utils/msg');
 
 if (process.env.NODE_ENV === 'production' && (!process.env.MONGODB_URI || !process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) throw new Error('Configure MONGODB_URI and JWT_SECRET (32+ characters)');
 const connectDB = require('./utils/db');
@@ -77,7 +78,7 @@ app.use(async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
-    res.status(500).json({ success: false, message: 'DB ulanish xatosi' });
+    res.status(500).json({ success: false, message: msg(req, 'Не удалось подключиться к базе данных', 'Маалымат базасына туташуу мүмкүн болгон жок') });
   }
 });
 
@@ -85,14 +86,14 @@ app.use(async (req, res, next) => {
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
-  message: { success: false, message: 'Слишком много запросов. Попробуйте позже.' },
+  handler: (req, res) => res.status(429).json({ success: false, message: msg(req, 'Слишком много запросов. Попробуйте позже.', 'Сурамдар өтө көп. Кийинчерээк аракет кылыңыз.') }),
 });
 app.use('/api/', limiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { success: false, message: 'Слишком много попыток. Подождите 15 минут.' },
+  handler: (req, res) => res.status(429).json({ success: false, message: msg(req, 'Слишком много попыток. Подождите 15 минут.', 'Аракеттер өтө көп. 15 мүнөт күтүңүз.') }),
   skipSuccessfulRequests: true,
 });
 app.use('/api/auth/login', authLimiter);

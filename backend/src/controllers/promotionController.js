@@ -41,10 +41,10 @@ function parsePromotionFields(body, existing = {}) {
 
 function invalidPromotionResponse(res, error, req) {
   const message = error.message === 'INVALID_DISCOUNT'
-    ? msg(req, 'РЎРєРёРґРєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚ 0 РґРѕ 100%', 'РҐРµРЅРёР»РґРёРє 0–100% Р°СЂР°Р»С‹РіС‹РЅРґР° Р±РѕР»СѓС€Сѓ РєРµСЂРµРє')
+    ? msg(req, 'Скидка должна быть от 0 до 100%', 'Жеңилдик 0дөн 100%га чейин болушу керек')
     : error.message === 'INVALID_DATES'
-      ? msg(req, 'РџСЂРѕРІРµСЂСЊС‚Рµ РґР°С‚С‹ Р°РєС†РёРё', 'РђРєС†РёСЏРЅС‹РЅ РєТЇРЅТЇРЅ С‚РµРєС€РµСЂРёТЈРёР·')
-      : msg(req, 'РџСЂРѕРІРµСЂСЊС‚Рµ С‚РѕРІР°СЂС‹ Рё Р»РёРјРёС‚С‹', 'РўРѕРІР°СЂРґС‹ Р¶Р°РЅР° Р»РёРјРёС‚С‚РµСЂРґРё С‚РµРєС€РµСЂРёТЈРёР·');
+      ? msg(req, 'Проверьте даты акции', 'Акциянын күндөрүн текшериңиз')
+      : msg(req, 'Проверьте товары и ограничения', 'Товарларды жана чектөөлөрдү текшериңиз');
   return res.status(400).json({ success: false, message });
 }
 
@@ -123,7 +123,7 @@ exports.updatePromotion = async (req, res) => {
     const expectedUpdatedAt = new Date(req.body.expectedUpdatedAt);
     if (!Number.isFinite(expectedUpdatedAt.getTime())) return res.status(409).json({ success: false, message: msg(req, 'Обновите акцию и повторите', 'Акцияны жаңылап, кайталаңыз') });
     const current = await Promotion.findById(req.params.id);
-    if (!current) return res.status(404).json({ success: false, message: msg(req, 'РђРєС†РёСЏ РЅРµ РЅР°Р№РґРµРЅР°', 'РђРєС†РёСЏ С‚Р°Р±С‹Р»РіР°РЅ Р¶РѕРє') });
+    if (!current) return res.status(404).json({ success: false, message: msg(req, 'Акция не найдена', 'Акция табылган жок') });
     const parsed = parsePromotionFields({ startDate, endDate, discountPercent, products }, current);
     const updates = { startDate: parsed.startDate, endDate: parsed.endDate, discountPercent: parsed.discountPercent, products: parsed.products };
     if (title_ru !== undefined) updates.title_ru = title_ru;

@@ -44,7 +44,7 @@ exports.updateSettings = async (req, res) => {
 // ─── Admin: QR rasm yuklash / Upload QR image (Mbank) ────────────────────────
 exports.uploadQRImage = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'Файл не выбран' });
+    if (!req.file) return res.status(400).json({ success: false, message: msg(req, 'Файл не выбран', 'Файл тандалган жок') });
     const url = await uploadToCloudinary(req.file.buffer, req.file.mimetype, 'settings');
     let settings = await StoreSettings.findOne();
     if (!settings) settings = new StoreSettings(DEFAULTS);
@@ -59,7 +59,7 @@ exports.uploadQRImage = async (req, res) => {
 // ─── Admin: O!Business QR yuklash / Upload QR image 2 ───────────────────────
 exports.uploadQRImage2 = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'Файл не выбран' });
+    if (!req.file) return res.status(400).json({ success: false, message: msg(req, 'Файл не выбран', 'Файл тандалган жок') });
     const url = await uploadToCloudinary(req.file.buffer, req.file.mimetype, 'settings');
     let settings = await StoreSettings.findOne();
     if (!settings) settings = new StoreSettings(DEFAULTS);

@@ -1,7 +1,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const mongoose = require('mongoose');
 const QRCode = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('node:crypto');
 
 const User = require('../models/User');
 const Category = require('../models/Category');
@@ -19,7 +19,7 @@ const runSeed = async () => {
     // ─── Admin ──────────────────────────────────────────────────────
     const adminExists = await User.findOne({ email: process.env.ADMIN_EMAIL || 'admin@hlopok.com' });
     if (!adminExists) {
-      const qrData = `hlopok:bonus:admin:${uuidv4()}`;
+      const qrData = `hlopok:bonus:admin:${randomUUID()}`;
       const qrCode = await QRCode.toDataURL(qrData);
       await User.create({
         email: process.env.ADMIN_EMAIL || 'admin@hlopok.com',
